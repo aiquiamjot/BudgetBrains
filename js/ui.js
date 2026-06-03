@@ -16,22 +16,21 @@ function switchTab(name) {
 /* ═══════════════════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
-  loadState();
-  applyTheme(S.theme || 'light');
+document.addEventListener('DOMContentLoaded', async () => {
+  // Apply theme instantly from localStorage before any async work
+  const cachedTheme = (() => {
+    try { return JSON.parse(localStorage.getItem('bb_theme')) || 'light'; } catch { return 'light'; }
+  })();
+  applyTheme(cachedTheme);
 
-  const hasCreds = !!localStorage.getItem('bb_credentials');
-  const hasSession = !!sessionStorage.getItem('bb_session');
-
-  if (!hasCreds)       showScreen('setup');
-  else if (hasSession) { showScreen('dashboard'); switchTab(S.activeTab||'overview'); }
-  else                 showScreen('login');
-
+  // Wire up all event listeners first so screens are interactive immediately
   ri('setup-form').addEventListener('submit', handleSetup);
   ri('login-form').addEventListener('submit', handleLogin);
   ri('forgot-form').addEventListener('submit', handleForgot);
-  ri('totp-confirm-btn').addEventListener('click', closeTotpModal);
+  ri('reset-form').addEventListener('submit', handleReset);
   ri('forgot-link').addEventListener('click', e => { e.preventDefault(); showScreen('forgot'); });
+  ri('signup-link').addEventListener('click', e => { e.preventDefault(); showScreen('setup'); });
+  ri('setup-goto-login').addEventListener('click', e => { e.preventDefault(); showScreen('login'); });
   ri('back-to-login').addEventListener('click', e => { e.preventDefault(); showScreen('login'); });
   ri('logout-btn').addEventListener('click', logout);
   ri('theme-toggle').addEventListener('click', toggleTheme);
@@ -39,6 +38,23 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
+
+  // Listen for PASSWORD_RECOVERY event (user clicked the reset link in their email)
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') showScreen('reset');
+  });
+
+  // Check for an existing valid Supabase session (signed JWT — cannot be faked via DevTools)
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (session) {
+    await loadState();
+    applyTheme(S.theme || 'light');
+    showScreen('dashboard');
+    switchTab(S.activeTab || 'overview');
+  } else {
+    showScreen('login');
+  }
 
   feather.replace();
 });

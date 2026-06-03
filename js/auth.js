@@ -9,53 +9,46 @@ function showScreen(name) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   AUTH — SETUP
+   AUTH — REGISTER
 ═══════════════════════════════════════════════════════════════════════════ */
 async function handleSetup(e) {
   e.preventDefault();
-  const user = ri('setup-user').value.trim();
-  const pass = ri('setup-pass').value;
+  const email = ri('setup-email').value.trim();
+  const pass  = ri('setup-pass').value;
   const pass2 = ri('setup-pass2').value;
-  const err = ri('setup-error');
+  const err   = ri('setup-error');
+  const btn   = e.submitter;
   err.textContent = '';
 
-  if (!user)           { err.textContent = 'Username is required.'; return; }
-  if (pass.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
-  if (pass !== pass2)  { err.textContent = 'Passwords do not match.'; return; }
+  if (!email)           { err.textContent = 'Email is required.'; return; }
+  if (pass.length < 8)  { err.textContent = 'Password must be at least 8 characters.'; return; }
+  if (pass !== pass2)   { err.textContent = 'Passwords do not match.'; return; }
 
-  const passwordHash = await sha256(pass);
-  const totpSecret   = genBase32(20);
-  localStorage.setItem('bb_credentials', JSON.stringify({ username: user, passwordHash, totpSecret }));
+  btn.disabled = true;
+  btn.textContent = 'Creating account…';
 
-  showTotpModal(user, totpSecret);
-}
+  const { data, error } = await sb.auth.signUp({ email, password: pass });
 
-function showTotpModal(username, secret) {
-  const formatted = (secret.match(/.{1,4}/g) || []).join(' ');
-  ri('totp-secret-display').textContent = formatted;
+  btn.disabled = false;
+  btn.textContent = 'Create Account';
 
-  const totp = new OTPAuth.TOTP({
-    issuer: 'BudgetBrains', label: username,
-    algorithm: 'SHA1', digits: 6, period: 30,
-    secret: OTPAuth.Secret.fromBase32(secret),
-  });
+  if (error) { err.textContent = error.message; return; }
 
-  const canvas = ri('totp-qr-canvas');
-  if (typeof QRCode !== 'undefined') {
-    QRCode.toCanvas(canvas, totp.toString(), { width: 180, margin: 2 }, err => {
-      if (err) canvas.style.display = 'none';
-    });
+  if (data.session) {
+    // Email confirmations disabled in Supabase — signed in immediately
+    await loadState();
+    showScreen('dashboard');
+    switchTab(S.activeTab || 'overview');
   } else {
-    canvas.style.display = 'none';
+    // Email confirmation required — tell the user to check their inbox
+    err.style.color = 'var(--success, #059669)';
+    err.textContent = 'Account created! Check your email to confirm, then sign in.';
+    setTimeout(() => {
+      err.textContent = '';
+      err.style.color = '';
+      showScreen('login');
+    }, 4000);
   }
-
-  ri('modal-totp').classList.add('active');
-}
-
-function closeTotpModal() {
-  ri('modal-totp').classList.remove('active');
-  ['setup-user','setup-pass','setup-pass2'].forEach(id => { const el = ri(id); if (el) el.value = ''; });
-  showScreen('login');
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -63,74 +56,93 @@ function closeTotpModal() {
 ═══════════════════════════════════════════════════════════════════════════ */
 async function handleLogin(e) {
   e.preventDefault();
-  const user = ri('login-user').value.trim();
-  const pass = ri('login-pass').value;
-  const code = ri('login-totp').value.trim().replace(/\s/g,'');
-  const err  = ri('login-error');
+  const email = ri('login-email').value.trim();
+  const pass  = ri('login-pass').value;
+  const err   = ri('login-error');
+  const btn   = e.submitter;
   err.textContent = '';
 
-  const raw = localStorage.getItem('bb_credentials');
-  if (!raw) { err.textContent = 'No account found. Please set up first.'; return; }
-  const creds = JSON.parse(raw);
+  if (!email) { err.textContent = 'Email is required.'; return; }
+  if (!pass)  { err.textContent = 'Password is required.'; return; }
 
-  const hash = await sha256(pass);
-  if (user !== creds.username || hash !== creds.passwordHash) {
-    err.textContent = 'Invalid username or password.'; return;
-  }
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
 
-  const totp = new OTPAuth.TOTP({
-    secret: OTPAuth.Secret.fromBase32(creds.totpSecret), digits: 6, period: 30,
-  });
-  if (totp.validate({ token: code, window: 1 }) === null) {
-    err.textContent = 'Invalid authenticator code.'; return;
-  }
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
 
-  sessionStorage.setItem('bb_session', '1');
+  btn.disabled = false;
+  btn.textContent = 'Sign In';
+
+  if (error) { err.textContent = error.message; return; }
+
+  await loadState();
   showScreen('dashboard');
   switchTab(S.activeTab || 'overview');
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AUTH — FORGOT PASSWORD
+   Supabase emails the user a reset link. No code entry needed.
 ═══════════════════════════════════════════════════════════════════════════ */
 async function handleForgot(e) {
   e.preventDefault();
-  const user     = ri('forgot-user').value.trim();
-  const code     = ri('forgot-totp').value.trim().replace(/\s/g,'');
-  const newPass  = ri('forgot-newpass').value;
-  const newPass2 = ri('forgot-newpass2').value;
-  const err      = ri('forgot-error');
-  const succ     = ri('forgot-success');
+  const email = ri('forgot-email').value.trim();
+  const err   = ri('forgot-error');
+  const succ  = ri('forgot-success');
+  const btn   = e.submitter;
   err.textContent = ''; succ.textContent = '';
 
-  const raw = localStorage.getItem('bb_credentials');
-  if (!raw) { err.textContent = 'No account found.'; return; }
-  const creds = JSON.parse(raw);
+  if (!email) { err.textContent = 'Email is required.'; return; }
 
-  if (user !== creds.username) { err.textContent = 'Username not found.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
 
-  const totp = new OTPAuth.TOTP({
-    secret: OTPAuth.Secret.fromBase32(creds.totpSecret), digits: 6, period: 30,
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
   });
-  if (totp.validate({ token: code, window: 1 }) === null) {
-    err.textContent = 'Invalid authenticator code.'; return;
-  }
+
+  btn.disabled = false;
+  btn.textContent = 'Send Reset Email';
+
+  if (error) { err.textContent = error.message; return; }
+
+  succ.textContent = 'Reset email sent! Check your inbox and click the link.';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTH — PASSWORD RESET (after user clicks the email link)
+═══════════════════════════════════════════════════════════════════════════ */
+async function handleReset(e) {
+  e.preventDefault();
+  const newPass  = ri('reset-pass').value;
+  const newPass2 = ri('reset-pass2').value;
+  const err      = ri('reset-error');
+  const btn      = e.submitter;
+  err.textContent = '';
 
   if (newPass.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
   if (newPass !== newPass2) { err.textContent = 'Passwords do not match.'; return; }
 
-  creds.passwordHash = await sha256(newPass);
-  localStorage.setItem('bb_credentials', JSON.stringify(creds));
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
 
-  succ.textContent = 'Password reset successfully! Redirecting to login…';
-  setTimeout(() => {
-    succ.textContent = '';
-    ['forgot-user','forgot-totp','forgot-newpass','forgot-newpass2'].forEach(id => { const el = ri(id); if(el) el.value=''; });
-    showScreen('login');
-  }, 2000);
+  const { error } = await sb.auth.updateUser({ password: newPass });
+
+  btn.disabled = false;
+  btn.textContent = 'Set New Password';
+
+  if (error) { err.textContent = error.message; return; }
+
+  // Password updated — user is now signed in, load their data
+  await loadState();
+  showScreen('dashboard');
+  switchTab(S.activeTab || 'overview');
 }
 
-function logout() {
-  sessionStorage.removeItem('bb_session');
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTH — LOGOUT
+═══════════════════════════════════════════════════════════════════════════ */
+async function logout() {
+  await sb.auth.signOut();
   showScreen('login');
 }
