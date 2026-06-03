@@ -1,15 +1,11 @@
 <!--
   BudgetBrains — Monthly Budget Allocation Dashboard
   ═══════════════════════════════════════════════════
-  Run:  python -m http.server 8080
-  Open: http://localhost:8080
+  Local dev:  python -m http.server 8080
+  Production: Deployed on Vercel, data stored in Supabase
 
-  First launch shows a setup screen. Create your username
-  and password — a unique TOTP secret is generated and
-  displayed once for you to add to Google Authenticator.
-
-  Forgot password? Use the "Forgot password?" link on the
-  login screen and verify via your authenticator app.
+  Before deploying, replace the two placeholder strings in js/state.js
+  with your Supabase project URL and anon key.
 -->
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
@@ -20,14 +16,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/otpauth/dist/otpauth.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 </head>
 <body>
 
-<!-- ══ SETUP SCREEN ══════════════════════════════════════════════════════════ -->
+<!-- ══ REGISTER SCREEN ═══════════════════════════════════════════════════════ -->
 <div id="screen-setup" class="screen">
   <div class="auth-card">
     <div class="auth-logo">💰</div>
@@ -35,8 +30,8 @@
     <p class="auth-subtitle">Create your account to get started</p>
     <form id="setup-form" novalidate>
       <div class="form-field">
-        <label>Username</label>
-        <input id="setup-user" type="text" placeholder="Choose a username" autocomplete="username">
+        <label>Email</label>
+        <input id="setup-email" type="email" placeholder="you@example.com" autocomplete="email">
       </div>
       <div class="form-field">
         <label>Password</label>
@@ -48,6 +43,7 @@
       </div>
       <p id="setup-error" class="error-text"></p>
       <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+      <a id="setup-goto-login" href="#" class="auth-link">Already have an account? Sign in</a>
     </form>
   </div>
 </div>
@@ -60,20 +56,17 @@
     <p class="auth-subtitle">Sign in to continue</p>
     <form id="login-form" novalidate>
       <div class="form-field">
-        <label>Username</label>
-        <input id="login-user" type="text" placeholder="Your username" autocomplete="username">
+        <label>Email</label>
+        <input id="login-email" type="email" placeholder="you@example.com" autocomplete="email">
       </div>
       <div class="form-field">
         <label>Password</label>
         <input id="login-pass" type="password" placeholder="Your password" autocomplete="current-password">
       </div>
-      <div class="form-field">
-        <label>Authenticator Code</label>
-        <input id="login-totp" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code">
-      </div>
       <p id="login-error" class="error-text"></p>
       <button type="submit" class="btn btn-primary btn-full">Sign In</button>
       <a id="forgot-link" href="#" class="auth-link">Forgot password?</a>
+      <a id="signup-link" href="#" class="auth-link">Don't have an account? Sign up</a>
     </form>
   </div>
 </div>
@@ -83,28 +76,37 @@
   <div class="auth-card">
     <div class="auth-logo">🔑</div>
     <h1>Reset Password</h1>
-    <p class="auth-subtitle">Verify with your authenticator app</p>
+    <p class="auth-subtitle">We'll email you a reset link</p>
     <form id="forgot-form" novalidate>
       <div class="form-field">
-        <label>Username</label>
-        <input id="forgot-user" type="text" placeholder="Your username">
-      </div>
-      <div class="form-field">
-        <label>Authenticator Code</label>
-        <input id="forgot-totp" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code">
-      </div>
-      <div class="form-field">
-        <label>New Password</label>
-        <input id="forgot-newpass" type="password" placeholder="At least 8 characters">
-      </div>
-      <div class="form-field">
-        <label>Confirm New Password</label>
-        <input id="forgot-newpass2" type="password" placeholder="Repeat new password">
+        <label>Email</label>
+        <input id="forgot-email" type="email" placeholder="you@example.com" autocomplete="email">
       </div>
       <p id="forgot-error" class="error-text"></p>
       <p id="forgot-success" class="success-text"></p>
-      <button type="submit" class="btn btn-primary btn-full">Reset Password</button>
+      <button type="submit" class="btn btn-primary btn-full">Send Reset Email</button>
       <a id="back-to-login" href="#" class="auth-link">← Back to login</a>
+    </form>
+  </div>
+</div>
+
+<!-- ══ PASSWORD RESET SCREEN (user arrived via reset email link) ══════════════ -->
+<div id="screen-reset" class="screen">
+  <div class="auth-card">
+    <div class="auth-logo">🔑</div>
+    <h1>Set New Password</h1>
+    <p class="auth-subtitle">Enter your new password below</p>
+    <form id="reset-form" novalidate>
+      <div class="form-field">
+        <label>New Password</label>
+        <input id="reset-pass" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+      </div>
+      <div class="form-field">
+        <label>Confirm New Password</label>
+        <input id="reset-pass2" type="password" placeholder="Repeat new password" autocomplete="new-password">
+      </div>
+      <p id="reset-error" class="error-text"></p>
+      <button type="submit" class="btn btn-primary btn-full">Set New Password</button>
     </form>
   </div>
 </div>
@@ -138,26 +140,6 @@
     <div id="tab-banks" class="tab-panel"></div>
     <div id="tab-transfer" class="tab-panel"></div>
   </main>
-</div>
-
-<!-- ══ TOTP SETUP MODAL ══════════════════════════════════════════════════════ -->
-<div id="modal-totp" class="modal-overlay">
-  <div class="modal-card">
-    <h2>Set Up Google Authenticator</h2>
-    <p class="modal-warn">⚠️ Copy this key now — it will <strong>not</strong> be shown again.</p>
-    <div class="qr-container">
-      <canvas id="totp-qr-canvas"></canvas>
-    </div>
-    <p class="modal-label">Manual entry key</p>
-    <div class="secret-display" id="totp-secret-display"></div>
-    <p class="modal-instructions">
-      Open <strong>Google Authenticator</strong> → tap <strong>+</strong> →
-      <strong>Enter a setup key</strong> → paste the key above → tap <strong>Add</strong>.
-    </p>
-    <button id="totp-confirm-btn" class="btn btn-primary btn-full">
-      I've saved my key — Continue to Login
-    </button>
-  </div>
 </div>
 
 <script src="js/state.js"></script>
