@@ -4,8 +4,8 @@
    Replace the two placeholder strings below with your project's values.
    Find them in: Supabase Dashboard → Project Settings → API
 ═══════════════════════════════════════════════════════════════════════════ */
-const SUPABASE_URL      = 'REPLACE_WITH_YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'REPLACE_WITH_YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL      = 'https://ijymyyqkaqzbmljbfnwz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqeW15eXFrYXF6Ym1samJmbnd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NTUxNTMsImV4cCI6MjA5NjAzMTE1M30.xtrg8B77SayAlDHD8HdysV00FuIv40hzBsBNhASRgpQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ═══════════════════════════════════════════════════════════════════════════
