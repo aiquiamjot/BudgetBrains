@@ -1,6 +1,8 @@
 # BudgetBrains
 
-A single-page, offline-first monthly budget allocation dashboard. Plan your take-home pay across Needs, Wants, and Savings; split expenses across biweekly payroll cutoffs; assign costs to specific banks or e-wallets; and generate an optimal bank transfer sequence that minimises fees — all stored locally in your browser with no account or backend required.
+A single-page monthly budget allocation dashboard. Plan your take-home pay across Needs, Wants, and Savings; split expenses across biweekly payroll cutoffs; assign costs to specific banks or e-wallets; and generate an optimal bank transfer sequence that minimises fees.
+
+**Live app:** [budgetbrains.vercel.app](https://budgetbrains.vercel.app)
 
 ---
 
@@ -12,39 +14,16 @@ A single-page, offline-first monthly budget allocation dashboard. Plan your take
 - **Transfer sequence** — configure which bank-to-bank routes exist, their per-transfer fees, and each bank's free-transfer quota. The app computes the cheapest ordered sequence of transfers for each cutoff, routing through intermediate banks when that reduces fees.
 - **TOTP two-factor auth** — account setup generates a TOTP secret compatible with Google Authenticator. Login requires username, password, and a 6-digit code. Password reset is also gated behind TOTP.
 - **Light / dark theme** — toggle in the top bar; preference is persisted.
-- **All data stored locally** — everything lives in `localStorage`. Nothing is sent to any server.
-
----
-
-## Requirements
-
-- A modern browser (Chrome, Edge, Firefox, Safari)
-- Python 3 (for the local HTTP server) **or** any static file server
 
 ---
 
 ## Getting started
 
-### 1. Clone or download the repo
+### 1. Open the app
 
-```bash
-git clone https://github.com/aiquiamjot/budgetbrains.git
-cd budgetbrains
-```
+Visit **[budgetbrains.vercel.app](https://budgetbrains.vercel.app)** — no installation needed.
 
-### 2. Serve the files locally
-
-```bash
-python -m http.server 8080
-```
-
-Then open **http://localhost:8080** in your browser.
-
-On Windows you can also double-click **`launch.bat`**, which runs the same command.
-
-> Opening `index.html` directly as a `file://` URL works in most browsers but is not recommended — some browser security policies restrict `localStorage` access on `file://` origins.
-
-### 3. Create your account
+### 2. Create your account
 
 The first time you open the app you will see the **Setup** screen:
 
@@ -53,9 +32,9 @@ The first time you open the app you will see the **Setup** screen:
 3. A QR code and a manual entry key are displayed **once**. Scan or copy the key into **Google Authenticator** (or any TOTP app such as Aegis or Authy).
 4. Click **I've saved my key — Continue to Login**.
 
-> The secret is stored in `localStorage` and will not be shown again. If you lose your authenticator and have no backup, clear `localStorage` (DevTools → Application → Storage → Clear) and set up a new account. All budget data will also be cleared.
+> Keep a backup of your TOTP key. If you lose access to your authenticator and have no backup, you will not be able to log in.
 
-### 4. Sign in
+### 3. Sign in
 
 Enter your username, password, and the current 6-digit code from your authenticator app.
 
@@ -123,18 +102,19 @@ Where routing through an intermediate bank is cheaper than a direct transfer, th
 
 ## Data & privacy
 
-All data is saved to `localStorage` under the key prefix used by BudgetBrains. No data leaves your device. To back up your budget, export `localStorage` with a browser extension or DevTools. To start fresh, clear site data in your browser settings.
+Budget data is stored in **Supabase** and is tied to your account. No data is shared with third parties. To delete your data, clear your account from within the app or contact the maintainer.
 
 ---
 
 ## Tech stack
 
-| Library | Purpose |
+| Layer | Technology |
 |---|---|
-| [Chart.js](https://www.chartjs.org/) | Donut and bar charts |
-| [OTPAuth](https://github.com/hectorm/otpauth) | TOTP generation and verification |
-| [QRCode.js](https://github.com/soldair/node-qrcode) | QR code rendering for authenticator setup |
-| [Feather Icons](https://feathericons.com/) | UI icons |
-| [DM Sans](https://fonts.google.com/specimen/DM+Sans) | Typography |
-
-No build step, no framework, no server — just static files.
+| Frontend | Vanilla HTML, CSS, JavaScript |
+| Hosting | [Vercel](https://vercel.com) |
+| Backend / Database | [Supabase](https://supabase.com) |
+| Charts | [Chart.js](https://www.chartjs.org/) |
+| 2FA | [OTPAuth](https://github.com/hectorm/otpauth) |
+| QR codes | [QRCode.js](https://github.com/soldair/node-qrcode) |
+| Icons | [Feather Icons](https://feathericons.com/) |
+| Typography | [DM Sans](https://fonts.google.com/specimen/DM+Sans) |
