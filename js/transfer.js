@@ -119,6 +119,18 @@ function bindTransfer() {
     routesCollapsed = !routesCollapsed;
     const body = panel.querySelector('.routes-collapsible');
     const btn  = ri('btn-toggle-routes');
+    if (routesCollapsed) {
+      body.style.maxHeight = body.scrollHeight + 'px';
+      body.style.overflow = 'hidden';
+      requestAnimationFrame(() => requestAnimationFrame(() => { body.style.maxHeight = '0'; }));
+    } else {
+      body.style.maxHeight = body.scrollHeight + 'px';
+      body.addEventListener('transitionend', function done() {
+        body.style.maxHeight = 'none';
+        body.style.overflow = '';
+        body.removeEventListener('transitionend', done);
+      }, { once: true });
+    }
     body.classList.toggle('collapsed', routesCollapsed);
     btn.innerHTML = `<i data-feather="${routesCollapsed ? 'chevron-down' : 'chevron-up'}" style="width:13px;height:13px"></i> ${routesCollapsed ? 'Show' : 'Hide'}`;
     feather.replace();

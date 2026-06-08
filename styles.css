@@ -423,8 +423,8 @@ select:focus { outline: none; border-color: var(--accent); }
 .transfer-calc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
 .routes-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
 .routes-card-header h4 { margin: 0; }
-.routes-collapsible { overflow: hidden; transition: max-height .25s ease, opacity .2s ease; max-height: 2000px; opacity: 1; }
-.routes-collapsible.collapsed { max-height: 0; opacity: 0; pointer-events: none; }
+.routes-collapsible { transition: max-height .25s ease, opacity .2s ease; opacity: 1; }
+.routes-collapsible.collapsed { overflow: hidden; max-height: 0; opacity: 0; pointer-events: none; }
 .btn-collapse { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .25rem .6rem; cursor: pointer; color: var(--text-muted); font-size: .8rem; display: flex; align-items: center; gap: .3rem; transition: background .15s; }
 .btn-collapse:hover { background: var(--surface2); }
 .transfer-steps { display: flex; flex-direction: column; gap: .5rem; }
