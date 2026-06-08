@@ -43,6 +43,71 @@ function renderSection(cat) {
     </div>`;
 }
 
+function buildPersonalityPanelHTML() {
+  const header = `
+    <div class="pp-header">
+      <h4>Spending Personality</h4>
+      <span class="pp-subtitle">Powered by Groq AI</span>
+    </div>`;
+
+  if (!S.groqKey) {
+    return header + `
+      <div class="pp-no-key">
+        <p class="pp-hint">Enter your free <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq API key</a> to get a personalized spending profile.</p>
+        <div class="pp-key-form">
+          <input id="pp-key-input" type="password" placeholder="gsk_…" class="pp-key-inp" autocomplete="off">
+          <button id="pp-key-save" class="btn btn-primary btn-sm">Save</button>
+        </div>
+      </div>`;
+  }
+
+  if (!S.groqProfile) {
+    return header + `
+      <div class="pp-empty">
+        <p class="pp-hint">API key saved. Click below to analyze your budget and get your spending personality.</p>
+        <button id="pp-analyze-btn" class="btn btn-primary btn-sm">Analyze Budget</button>
+        <button id="pp-clear-key" class="btn btn-ghost btn-sm">Clear API Key</button>
+      </div>`;
+  }
+
+  const isStale = S.groqProfile.budgetHash !== buildBudgetHash();
+  const staleHtml = isStale
+    ? `<div class="pp-stale">Budget changed — results may be outdated</div>` : '';
+
+  const { type, emoji, description, tips, score } = S.groqProfile.result;
+  const scoreClass = score >= 90 ? 'pp-score-excellent'
+                   : score >= 70 ? 'pp-score-good'
+                   : score >= 50 ? 'pp-score-fair'
+                   :               'pp-score-poor';
+  const tipsHtml = (tips || []).map(t => `<li>${esc(t)}</li>`).join('');
+  const savedDate = new Date(S.groqProfile.savedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+
+  return header + staleHtml + `
+    <div class="pp-result">
+      <div class="pp-type-row">
+        <span class="pp-emoji">${emoji || ''}</span>
+        <span class="pp-type-badge">${esc(type || '')}</span>
+      </div>
+      <div class="pp-score-section">
+        <div class="pp-score-label">Budget Health Score</div>
+        <div class="pp-score-bar-wrap">
+          <div class="pp-score-bar ${scoreClass}" style="width:${score}%"></div>
+        </div>
+        <div class="pp-score-value">${score}/100</div>
+      </div>
+      <p class="pp-description">${esc(description || '')}</p>
+      <div class="pp-tips-label">Tips</div>
+      <ul class="pp-tips">${tipsHtml}</ul>
+      <div class="pp-footer">
+        <span class="pp-saved-date">Analyzed ${savedDate}</span>
+        <div class="pp-footer-btns">
+          <button id="pp-analyze-btn" class="btn btn-primary btn-sm">Re-analyze</button>
+          <button id="pp-clear-key" class="btn btn-ghost btn-sm">Clear Key</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderOverview() {
   const { netPay, splits } = S.overview;
   const { needs:np, wants:wp, savings:sp } = splits;
@@ -54,47 +119,55 @@ function renderOverview() {
   const remaining = netPay - totalAllocated;
 
   ri('tab-overview').innerHTML = `
-    <div class="overview-controls card">
-      <div class="controls-row">
-        <div class="control-group">
-          <label>Net Monthly Pay</label>
-          <div class="input-group" style="min-width:180px">
-            <span>₱</span>
-            <input id="inp-netpay" type="number" value="${netPay||''}" placeholder="0" min="0">
+    <div class="overview-layout">
+      <div class="overview-main">
+        <div class="overview-controls card">
+          <div class="controls-row">
+            <div class="control-group">
+              <label>Net Monthly Pay</label>
+              <div class="input-group" style="min-width:180px">
+                <span>₱</span>
+                <input id="inp-netpay" type="number" value="${netPay||''}" placeholder="0" min="0">
+              </div>
+            </div>
+            <div class="control-group">
+              <label>Allocation Split (%)</label>
+              <div class="splits-row">
+                <div class="split-item"><span>Needs</span><input id="spl-needs" type="number" value="${np}" min="0" max="100"></div>
+                <div class="split-item"><span>Wants</span><input id="spl-wants" type="number" value="${wp}" min="0" max="100"></div>
+                <div class="split-item"><span>Savings</span><input id="spl-savings" type="number" value="${sp}" min="0" max="100"></div>
+              </div>
+              ${splitWarn}
+            </div>
           </div>
         </div>
-        <div class="control-group">
-          <label>Allocation Split (%)</label>
-          <div class="splits-row">
-            <div class="split-item"><span>Needs</span><input id="spl-needs" type="number" value="${np}" min="0" max="100"></div>
-            <div class="split-item"><span>Wants</span><input id="spl-wants" type="number" value="${wp}" min="0" max="100"></div>
-            <div class="split-item"><span>Savings</span><input id="spl-savings" type="number" value="${sp}" min="0" max="100"></div>
+
+        <div class="sections-grid">
+          ${['needs','wants','savings'].map(renderSection).join('')}
+        </div>
+
+        <div class="summary-section">
+          <div class="summary-cards">
+            <div class="summary-card"><div class="sc-label">Net Pay</div><div class="sc-value">${fmt(netPay)}</div></div>
+            <div class="summary-card sc-needs"><div class="sc-label">Needs Budget</div><div class="sc-value">${fmt(catAlloc('needs'))}</div></div>
+            <div class="summary-card sc-wants"><div class="sc-label">Wants Budget</div><div class="sc-value">${fmt(catAlloc('wants'))}</div></div>
+            <div class="summary-card sc-savings"><div class="sc-label">Savings Budget</div><div class="sc-value">${fmt(catAlloc('savings'))}</div></div>
+            <div class="summary-card"><div class="sc-label">Total Allocated</div><div class="sc-value">${fmt(totalAllocated)}</div></div>
+            <div class="summary-card ${remaining>=0?'sc-success':'sc-danger'}">
+              <div class="sc-label">${remaining>=0?'Remaining':'Overage'}</div>
+              <div class="sc-value ${remaining>=0?'color-success':'color-danger'}">${fmt(Math.abs(remaining))}</div>
+            </div>
           </div>
-          ${splitWarn}
+          <div class="charts-row">
+            <div class="card chart-card"><h4>Allocation Split</h4><canvas id="ch-donut"></canvas></div>
+            <div class="card chart-card"><h4>Budget vs. Subitem Total</h4><canvas id="ch-bar"></canvas></div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="sections-grid">
-      ${['needs','wants','savings'].map(renderSection).join('')}
-    </div>
-
-    <div class="summary-section">
-      <div class="summary-cards">
-        <div class="summary-card"><div class="sc-label">Net Pay</div><div class="sc-value">${fmt(netPay)}</div></div>
-        <div class="summary-card sc-needs"><div class="sc-label">Needs Budget</div><div class="sc-value">${fmt(catAlloc('needs'))}</div></div>
-        <div class="summary-card sc-wants"><div class="sc-label">Wants Budget</div><div class="sc-value">${fmt(catAlloc('wants'))}</div></div>
-        <div class="summary-card sc-savings"><div class="sc-label">Savings Budget</div><div class="sc-value">${fmt(catAlloc('savings'))}</div></div>
-        <div class="summary-card"><div class="sc-label">Total Allocated</div><div class="sc-value">${fmt(totalAllocated)}</div></div>
-        <div class="summary-card ${remaining>=0?'sc-success':'sc-danger'}">
-          <div class="sc-label">${remaining>=0?'Remaining':'Overage'}</div>
-          <div class="sc-value ${remaining>=0?'color-success':'color-danger'}">${fmt(Math.abs(remaining))}</div>
-        </div>
-      </div>
-      <div class="charts-row">
-        <div class="card chart-card"><h4>Allocation Split</h4><canvas id="ch-donut"></canvas></div>
-        <div class="card chart-card"><h4>Budget vs. Subitem Total</h4><canvas id="ch-bar"></canvas></div>
-      </div>
+      <aside class="personality-panel card" id="personality-panel">
+        ${buildPersonalityPanelHTML()}
+      </aside>
     </div>`;
 
   feather.replace();
@@ -134,6 +207,83 @@ function bindOverview() {
       save('overview','biweekly','bankAssign'); renderOverview();
     });
   });
+  bindPersonalityPanel();
+}
+
+function renderPersonalityPanel() {
+  const panel = ri('personality-panel');
+  if (!panel) return;
+  panel.innerHTML = buildPersonalityPanelHTML();
+  bindPersonalityPanel();
+}
+
+function renderPersonalityLoading() {
+  const panel = ri('personality-panel');
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="pp-header">
+      <h4>Spending Personality</h4>
+      <span class="pp-subtitle">Powered by Groq AI</span>
+    </div>
+    <div class="pp-loading">
+      <div class="pp-spinner"></div>
+      <p class="pp-hint">Analyzing your budget…</p>
+    </div>`;
+}
+
+function renderPersonalityResult() {
+  renderPersonalityPanel();
+}
+
+function renderPersonalityError(message) {
+  const panel = ri('personality-panel');
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="pp-header">
+      <h4>Spending Personality</h4>
+      <span class="pp-subtitle">Powered by Groq AI</span>
+    </div>
+    <div class="pp-error">
+      <p class="pp-error-msg">${esc(message)}</p>
+      <button id="pp-analyze-btn" class="btn btn-primary btn-sm">Try Again</button>
+      <button id="pp-clear-key" class="btn btn-ghost btn-sm">Clear Key</button>
+    </div>`;
+  bindPersonalityPanel();
+}
+
+function bindPersonalityPanel() {
+  const analyzeBtn = ri('pp-analyze-btn');
+  const keySaveBtn = ri('pp-key-save');
+  const clearKeyBtn = ri('pp-clear-key');
+  const keyInput = ri('pp-key-input');
+
+  if (analyzeBtn) analyzeBtn.addEventListener('click', () => analyzePersonality());
+
+  if (keySaveBtn) {
+    keySaveBtn.addEventListener('click', () => {
+      const val = (keyInput?.value || '').trim();
+      if (!val) return;
+      S.groqKey = val;
+      save('groqKey');
+      renderPersonalityPanel();
+    });
+  }
+
+  if (keyInput) {
+    keyInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') ri('pp-key-save')?.click();
+    });
+  }
+
+  if (clearKeyBtn) {
+    clearKeyBtn.addEventListener('click', () => {
+      S.groqKey = '';
+      S.groqProfile = null;
+      save('groqKey');
+      save('groqProfile');
+      renderPersonalityPanel();
+    });
+  }
 }
 
 function renderCharts() {

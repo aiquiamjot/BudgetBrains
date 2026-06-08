@@ -38,8 +38,10 @@ const DB_KEYS = {
 };
 
 const LOCAL_KEYS = {
-  theme:     'bb_theme',
-  activeTab: 'bb_activeTab',
+  theme:       'bb_theme',
+  activeTab:   'bb_activeTab',
+  groqKey:     'bb_groq_key',
+  groqProfile: 'bb_groq_profile',
 };
 
 const DEFAULTS = {
@@ -49,8 +51,10 @@ const DEFAULTS = {
   bankAssign:{},
   fees:      {},
   manual:    [],
-  theme:     'light',
-  activeTab: 'overview',
+  theme:       'light',
+  activeTab:   'overview',
+  groqKey:     '',
+  groqProfile: null,
 };
 
 const S = {};
