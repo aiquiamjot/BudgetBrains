@@ -2,7 +2,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    TRANSFER
 ═══════════════════════════════════════════════════════════════════════════ */
-let routesCollapsed = false;
+let routesCollapsed = true;
+function resetTransferState() { routesCollapsed = true; }
 
 function renderTransfer() {
   const { banks, fees, manual } = S;

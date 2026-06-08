@@ -37,6 +37,7 @@ async function handleSetup(e) {
   if (data.session) {
     // Email confirmations disabled in Supabase — signed in immediately
     await loadState();
+    resetTransferState();
     showScreen('dashboard');
     switchTab(S.activeTab || 'overview');
   } else {
@@ -76,6 +77,7 @@ async function handleLogin(e) {
   if (error) { err.textContent = error.message; return; }
 
   await loadState();
+  resetTransferState();
   showScreen('dashboard');
   switchTab(S.activeTab || 'overview');
 }
@@ -135,6 +137,7 @@ async function handleReset(e) {
 
   // Password updated — user is now signed in, load their data
   await loadState();
+  resetTransferState();
   showScreen('dashboard');
   switchTab(S.activeTab || 'overview');
 }
