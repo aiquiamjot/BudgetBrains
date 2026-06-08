@@ -191,7 +191,7 @@ a:hover { text-decoration: underline; }
 }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-.main-content { flex: 1; padding: 1.5rem; max-width: 1200px; width: 100%; margin: 0 auto; }
+.main-content { flex: 1; padding: 1.5rem; max-width: 1440px; width: 100%; margin: 0 auto; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
@@ -313,7 +313,7 @@ select:focus { outline: none; border-color: var(--accent); }
 }
 .split-item input:focus { outline: none; border-color: var(--accent); }
 .sections-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem;
 }
 .section-card {}
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .85rem; }

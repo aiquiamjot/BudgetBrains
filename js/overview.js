@@ -15,7 +15,7 @@ function renderSection(cat) {
     <tr>
       <td><input class="tbl-input" type="text" value="${esc(item.name)}" placeholder="Item name"
           data-id="${item.id}" data-field="name"></td>
-      <td style="width:120px"><input class="tbl-input" type="number" value="${item.amount||''}"
+      <td style="width:90px"><input class="tbl-input" type="number" value="${item.amount||''}"
           placeholder="0" min="0" data-id="${item.id}" data-field="amount"></td>
       <td style="width:36px"><button class="btn-icon del-item" data-id="${item.id}" title="Delete"><i data-feather="trash-2"></i></button></td>
     </tr>`).join('');
