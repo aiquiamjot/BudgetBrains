@@ -38,6 +38,7 @@ async function handleSetup(e) {
     // Email confirmations disabled in Supabase — signed in immediately
     await loadState();
     resetTransferState();
+    renderProfileSwitcher();
     showScreen('dashboard');
     switchTab(S.activeTab || 'overview');
   } else {
@@ -78,6 +79,7 @@ async function handleLogin(e) {
 
   await loadState();
   resetTransferState();
+  renderProfileSwitcher();
   showScreen('dashboard');
   switchTab(S.activeTab || 'overview');
 }
@@ -138,6 +140,7 @@ async function handleReset(e) {
   // Password updated — user is now signed in, load their data
   await loadState();
   resetTransferState();
+  renderProfileSwitcher();
   showScreen('dashboard');
   switchTab(S.activeTab || 'overview');
 }

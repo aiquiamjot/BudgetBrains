@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (session) {
     await loadState();
     applyTheme(S.theme || 'light');
+    renderProfileSwitcher();
     showScreen('dashboard');
     switchTab(S.activeTab || 'overview');
   } else {

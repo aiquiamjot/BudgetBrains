@@ -176,8 +176,21 @@ a:hover { text-decoration: underline; }
   display: flex; align-items: center; justify-content: space-between;
   position: sticky; top: 0; z-index: 100;
 }
-.app-title { font-weight: 600; font-size: 1.05rem; }
+.app-title { font-weight: 600; font-size: 1.05rem; white-space: nowrap; }
+.topbar-left  { display: flex; align-items: center; gap: 1rem; min-width: 0; }
 .topbar-right { display: flex; align-items: center; gap: .75rem; }
+
+/* ── Profile switcher ──────────────────────────────────────────────────── */
+.profile-switcher { display: flex; align-items: center; gap: .35rem; min-width: 0; }
+.profile-select {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-family: inherit; font-size: .875rem;
+  padding: .35rem .5rem; max-width: 11rem; cursor: pointer;
+}
+.profile-switcher .btn-icon-round { width: 1.85rem; height: 1.85rem; flex-shrink: 0; }
+.profile-switcher .btn-icon-round svg { width: 14px; height: 14px; }
+.profile-switcher .btn-icon-round[disabled] { opacity: .4; cursor: not-allowed; }
+.profile-switcher .btn-icon-round[disabled]:hover { background: var(--surface2); }
 .tab-bar {
   background: var(--surface); border-bottom: 1px solid var(--border);
   display: flex; gap: 0; padding: 0 1.5rem;
@@ -565,6 +578,8 @@ select:focus { outline: none; border-color: var(--accent); }
 @media (max-width: 600px) {
   .main-content { padding: 1rem .75rem; }
   .topbar { padding: 0 1rem; }
+  .app-title { display: none; }
+  .profile-select { max-width: 8rem; }
   .tab-bar { padding: 0 .5rem; overflow-x: auto; }
   .tab-btn { padding: .75rem .75rem; font-size: .82rem; }
   .controls-row { flex-direction: column; }
