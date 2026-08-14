@@ -4,15 +4,18 @@ A single-page monthly budget allocation dashboard. Plan your take-home pay acros
 
 **Live app:** [budgetbrains.vercel.app](https://budgetbrains.vercel.app)
 
+> This is a personal project, shared publicly. Anyone is welcome to sign up and use it, but it comes with no support or uptime guarantee.
+
 ---
 
 ## Features
 
+- **Profiles** — keep several alternative budgets under one account and switch between them from the top bar. Only one is active at a time.
 - **Budget overview** — set your net monthly pay, define a Needs / Wants / Savings percentage split, and itemise expenses per category. Live variance indicators and Chart.js donut + bar charts update as you type.
 - **Biweekly strategy** — assign each expense to Cutoff 1 (1st–15th), Cutoff 2 (16th–30th), or both (split evenly). An Auto-Suggest button balances the two cutoffs automatically using a greedy bin-packing approach.
 - **Bank allocation** — register banks and e-wallets (GCash, Maya, BPI, etc.) and map each expense to the account it will be paid from. A running total per account is displayed on its card.
 - **Transfer sequence** — configure which bank-to-bank routes exist, their per-transfer fees, and each bank's free-transfer quota. The app computes the cheapest ordered sequence of transfers for each cutoff, routing through intermediate banks when that reduces fees.
-- **TOTP two-factor auth** — account setup generates a TOTP secret compatible with Google Authenticator. Login requires username, password, and a 6-digit code. Password reset is also gated behind TOTP.
+- **Spending personality** — optional AI assessment of the active profile's budget, powered by Groq. Off unless you supply your own API key. Using it sends your net pay and every expense line to Groq's servers.
 - **Light / dark theme** — toggle in the top bar; preference is persisted.
 
 ---
@@ -25,18 +28,31 @@ Visit **[budgetbrains.vercel.app](https://budgetbrains.vercel.app)** — no inst
 
 ### 2. Create your account
 
-The first time you open the app you will see the **Setup** screen:
-
-1. Enter a username and a password (minimum 8 characters).
+1. On the **Sign up** screen, enter your email address and a password (minimum 8 characters), then confirm the password.
 2. Click **Create Account**.
-3. A QR code and a manual entry key are displayed **once**. Scan or copy the key into **Google Authenticator** (or any TOTP app such as Aegis or Authy).
-4. Click **I've saved my key — Continue to Login**.
-
-> Keep a backup of your TOTP key. If you lose access to your authenticator and have no backup, you will not be able to log in.
+3. If email confirmation is enabled, check your inbox and click the link before signing in. Otherwise you are signed straight in.
 
 ### 3. Sign in
 
-Enter your username, password, and the current 6-digit code from your authenticator app.
+Enter your email address and password on the login screen.
+
+---
+
+## Profiles
+
+A profile is one self-contained budget: its own net pay, splits, expense items, cutoff assignments and bank assignments. Your account can hold several, and the switcher in the top bar chooses which one you are looking at.
+
+**Profiles are alternatives to one another, not parts of a whole.** Exactly one is active at a time, and every tab reads from that one alone. Amounts are never added up across profiles — a second profile is a different answer to "how should I budget my pay", not a second pot of money.
+
+Use it to compare a lean month against a normal one, or to model what a raise would change, without destroying the budget you already trust.
+
+| Action | What happens |
+|---|---|
+| **New** | You name the profile, then choose whether to start it as a **copy** of the current one (net pay, items and all assignments carried over) or **empty**. |
+| **Rename** | Renames the active profile. Nothing else changes. |
+| **Delete** | Permanently removes the active profile's net pay, items, cutoff assignments and bank assignments. There is no undo. You cannot delete your last remaining profile. |
+
+Your **banks and transfer fees are shared across every profile** and are not affected by deleting one. They describe the accounts you actually hold, so they do not change when the budget does.
 
 ---
 
@@ -53,6 +69,14 @@ Enter your username, password, and the current 6-digit code from your authentica
 
 The summary cards at the bottom show budgeted vs. allocated amounts per category, and a **Remaining / Overage** figure for the whole month.
 
+#### Spending personality (optional, uses Groq)
+
+The Overview tab includes an AI panel that assesses the active profile's budget and returns a personality name, a budget-health score out of 100, and a few actionable tips.
+
+It is inactive until you paste your own [Groq](https://console.groq.com) API key into the panel. The key is stored in your browser's local storage on that device only — it is never sent to Supabase.
+
+> **What leaves your browser:** running the analysis sends your net monthly pay, your Needs / Wants / Savings percentages, and the name and amount of every expense item in the active profile directly to Groq's API. If you would rather that data never left the app, do not add a key — every other feature works without one.
+
 ### Biweekly Strategy tab
 
 Each expense you created in the Overview tab appears here. Use the dropdown to assign it to:
@@ -68,6 +92,8 @@ Click **Auto-Suggest** to have the app balance the two cutoffs automatically. Th
 1. Type a bank or e-wallet name (e.g. `BPI`, `GCash`), an optional nickname, select **Bank** or **E-wallet**, and click **Add**.
 2. In the table below, use the **Assigned To** dropdown on each expense to link it to an account (or **Cash** for physical cash expenses).
 3. Each bank card shows a running total of all expenses assigned to it.
+
+Banks are shared by every profile. Removing one clears its assignments everywhere, not just in the profile you are viewing.
 
 ### Transfer Sequence tab
 
@@ -95,14 +121,35 @@ Where routing through an intermediate bank is cheaper than a direct transfer, th
 ## Resetting your password
 
 1. On the login screen click **Forgot password?**
-2. Enter your username and the current 6-digit code from your authenticator app.
-3. Enter and confirm a new password, then click **Reset Password**.
+2. Enter your email address and click **Send Reset Email**.
+3. Open the link in the email Supabase sends you.
+4. Enter and confirm a new password, then click **Set New Password**.
 
 ---
 
 ## Data & privacy
 
-Budget data is stored in **Supabase** and is tied to your account. No data is shared with third parties. To delete your data, clear your account from within the app or contact the maintainer.
+Budget data is stored in **Supabase** and is tied to your account.
+
+Nothing is shared with third parties, with one opt-in exception: the **spending personality** feature sends the active profile's budget figures to Groq, and only if you have added your own API key. Without a key, no budget data ever leaves the app.
+
+**Deleting your data.** Deleting a profile permanently removes that profile's budget from the database. Banks and transfer fees are account-level and survive it. There is no in-app way to delete your whole account — contact the maintainer for that.
+
+---
+
+## Local development
+
+There is no build step. Serve the repository root with any static file server:
+
+```bash
+python -m http.server 8080
+```
+
+On Windows, `launch.bat` opens Chrome directly to `index.html`.
+
+If you fork this, point it at your own backend: replace `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the top of `js/state.js` with your own Supabase project's values, and create the `user_data` table it expects. The schema is documented in [CLAUDE.md](CLAUDE.md); the domain vocabulary is in [CONTEXT.md](CONTEXT.md), and `docs/adr/` records why the main boundaries fall where they do.
+
+Deploy target is Vercel — static hosting, no build config needed.
 
 ---
 
@@ -114,7 +161,6 @@ Budget data is stored in **Supabase** and is tied to your account. No data is sh
 | Hosting | [Vercel](https://vercel.com) |
 | Backend / Database | [Supabase](https://supabase.com) |
 | Charts | [Chart.js](https://www.chartjs.org/) |
-| 2FA | [OTPAuth](https://github.com/hectorm/otpauth) |
-| QR codes | [QRCode.js](https://github.com/soldair/node-qrcode) |
+| AI analysis | [Groq](https://groq.com) (`llama-3.3-70b-versatile`) |
 | Icons | [Feather Icons](https://feathericons.com/) |
 | Typography | [DM Sans](https://fonts.google.com/specimen/DM+Sans) |
