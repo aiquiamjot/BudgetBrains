@@ -118,7 +118,9 @@ Account-level rows (`profile_id = 'account'`):
 
 Per-Profile rows (`profile_id` = a Profile id):
 - `bb_overview`: `{ netPay, splits: {needs, wants, savings}, subitems: [{id, name, category, amount}] }`
-- `bb_biweekly`: `{ assignments: { [subitemId]: 'cutoff1'|'cutoff2'|'both' } }`
+- `bb_biweekly`: `{ assignments: { [subitemId]: 'cutoff1'|'cutoff2'|'both' }, forced: { [subitemId]: true } }`
+  — `forced` holds the Force Assigned Subitems; an absent map means none, so plans saved
+  before the feature need no migration. See `docs/adr/0005-*`.
 - `bb_bankAssign`: `{ [subitemId]: bankId | 'cash' }`
 - `bb_manual`: `[{ from, to, amount, note }]`
 

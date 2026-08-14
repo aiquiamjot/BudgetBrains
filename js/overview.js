@@ -203,6 +203,7 @@ function bindOverview() {
     btn.addEventListener('click', () => {
       S.overview.subitems = S.overview.subitems.filter(i => i.id !== btn.dataset.id);
       delete S.biweekly.assignments[btn.dataset.id];
+      delete S.biweekly.forced[btn.dataset.id];
       delete S.bankAssign[btn.dataset.id];
       save('overview','biweekly','bankAssign'); renderOverview();
     });
