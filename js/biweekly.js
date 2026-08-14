@@ -116,14 +116,23 @@ function renderBiweekly() {
   });
 }
 
-function autoSuggest() {
-  const items = [...S.overview.subitems].sort((a,b) => Number(b.amount)-Number(a.amount));
-  let t1=0, t2=0;
+/* The packing seam: the balancing rules with no state, no save and no DOM, so they can
+   be reasoned about on their own. Takes the Subitems and the current Cutoff assignments,
+   returns a new assignments map — `assignments` is not read yet, because Auto-Suggest
+   redistributes from scratch today. #5 is what teaches it to pack around Force Assigned
+   Subitems. See docs/specs/0001-force-assign.md. */
+function balanceCutoffs(subitems, assignments) {
   const asgn = {};
-  for (const it of items) {
-    if (t1 <= t2) { asgn[it.id]='cutoff1'; t1+=Number(it.amount); }
-    else          { asgn[it.id]='cutoff2'; t2+=Number(it.amount); }
+  let t1 = 0, t2 = 0;
+  // Copied before sorting — the caller's subitems array is not ours to reorder.
+  for (const it of [...subitems].sort((a, b) => Number(b.amount) - Number(a.amount))) {
+    if (t1 <= t2) { asgn[it.id] = 'cutoff1'; t1 += Number(it.amount); }
+    else          { asgn[it.id] = 'cutoff2'; t2 += Number(it.amount); }
   }
-  S.biweekly.assignments = asgn;
+  return asgn;
+}
+
+function autoSuggest() {
+  S.biweekly.assignments = balanceCutoffs(S.overview.subitems, S.biweekly.assignments);
   save('biweekly'); renderBiweekly();
 }
