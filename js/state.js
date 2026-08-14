@@ -70,7 +70,7 @@ const DEFAULTS = {
   banks:      [],
   fees:       {},
   overview:   { netPay: 0, splits: { needs: 50, wants: 30, savings: 20 }, subitems: [] },
-  biweekly:   { assignments: {} },
+  biweekly:   { assignments: {}, forced: {} },
   bankAssign: {},
   manual:     [],
   theme:         'light',
@@ -188,6 +188,13 @@ function hydrateProfile(id) {
     if (d[k] === undefined) d[k] = clone(DEFAULTS[k]);
     S[k] = d[k];
   }
+
+  /* NOT redundant with DEFAULTS.biweekly, however much it looks it. A profile saved
+     before Force Assign existed HAS a bb_biweekly row, so the default above is skipped
+     entirely and the loaded plan arrives with no `forced` map at all. Runs here so it
+     covers both the first load and every profile switch, and mutates in place because
+     the line above just pointed S.biweekly at the cached object. */
+  normaliseBiweekly(d.biweekly);
   for (const k in LOCAL_PROFILE_KEYS) S[k] = readLocal(profileLocalKey(k, id), DEFAULTS[k]);
 }
 

@@ -1,0 +1,4 @@
+# Throwaway working area — ticket notes and the Force Assign TDD harness.
+# Deliberately not committed: the project has no test runner and the tickets
+# forbid introducing one, so the harness stays local. See docs/adr/0005-*.
+.scratch/

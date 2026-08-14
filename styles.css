@@ -462,6 +462,11 @@ select:focus { outline: none; border-color: var(--accent); }
   padding: .4rem 0; border-bottom: 1px solid var(--border); font-size: .88rem;
 }
 .cutoff-item:last-of-type { border-bottom: none; }
+.cutoff-item .force-lock { width: 12px; height: 12px; color: var(--text-muted); vertical-align: -1px; }
+.bw-force-cell { width: 1%; white-space: nowrap; text-align: center; }
+.data-table th.bw-force-cell svg { width: 12px; height: 12px; vertical-align: -2px; }
+.bw-force { cursor: pointer; }
+.bw-force:disabled { opacity: .35; cursor: not-allowed; }
 .cutoff-empty { color: var(--text-muted); font-size: .85rem; padding: .5rem 0; }
 .cutoff-footer {
   display: flex; justify-content: space-between;

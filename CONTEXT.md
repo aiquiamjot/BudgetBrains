@@ -39,6 +39,13 @@ One of the two halves of the pay period. Every Subitem is assigned to Cutoff 1,
 Cutoff 2, or Both.
 _Avoid_: Period, cycle, paycheck
 
+**Force Assign**:
+A Cutoff assignment the person has fixed by hand. Auto-Suggest packs around Force
+Assigned Subitems and never reassigns them. The term is "Force Assign" in prose and in
+code; only the table column header abbreviates to "Force", because it sits beneath an
+Assign to Cutoff column that supplies the other half of the phrase.
+_Avoid_: Lock, pin, freeze
+
 ### Money movement
 
 **Bank**:
