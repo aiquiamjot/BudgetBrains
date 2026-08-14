@@ -117,15 +117,31 @@ function renderBiweekly() {
 }
 
 /* The packing seam: the balancing rules with no state, no save and no DOM, so they can
-   be reasoned about on their own. Takes the Subitems and the current Cutoff assignments,
-   returns a new assignments map — `assignments` is not read yet, because Auto-Suggest
-   redistributes from scratch today. #5 is what teaches it to pack around Force Assigned
-   Subitems. See docs/specs/0001-force-assign.md. */
-function balanceCutoffs(subitems, assignments) {
+   be reasoned about on their own. Takes the Subitems, the current Cutoff assignments and
+   the Force Assigned ids, and returns a new assignments map.
+
+   Force Assigned Subitems keep their placement verbatim and seed their cutoff's running
+   total, so the free Subitems flow toward whichever side actually has room. They are
+   honoured even when they overrun Half Pay — nothing is clamped or dropped, and the red
+   Remaining figure on the panel is how that gets reported. Free Subitems are still never
+   placed in Both; Both is a choice only a person makes, and Force Assign is what carries
+   it through a press. See docs/specs/0001-force-assign.md and docs/adr/0005-*. */
+function balanceCutoffs(subitems, assignments, forced = {}) {
   const asgn = {};
   let t1 = 0, t2 = 0;
+  const free = [];
+  for (const it of subitems) {
+    const a = assignments[it.id];
+    if (forced[it.id] && a) {
+      asgn[it.id] = a;
+      // Both contributes half to each side, matching how the Cutoff panels total it.
+      if      (a === 'both')    { t1 += Number(it.amount) / 2; t2 += Number(it.amount) / 2; }
+      else if (a === 'cutoff1')   t1 += Number(it.amount);
+      else                        t2 += Number(it.amount);
+    } else free.push(it);
+  }
   // Copied before sorting — the caller's subitems array is not ours to reorder.
-  for (const it of [...subitems].sort((a, b) => Number(b.amount) - Number(a.amount))) {
+  for (const it of [...free].sort((a, b) => Number(b.amount) - Number(a.amount))) {
     if (t1 <= t2) { asgn[it.id] = 'cutoff1'; t1 += Number(it.amount); }
     else          { asgn[it.id] = 'cutoff2'; t2 += Number(it.amount); }
   }
@@ -133,6 +149,7 @@ function balanceCutoffs(subitems, assignments) {
 }
 
 function autoSuggest() {
-  S.biweekly.assignments = balanceCutoffs(S.overview.subitems, S.biweekly.assignments);
+  S.biweekly.assignments = balanceCutoffs(
+    S.overview.subitems, S.biweekly.assignments, S.biweekly.forced);
   save('biweekly'); renderBiweekly();
 }
