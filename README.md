@@ -161,6 +161,6 @@ Deploy target is Vercel — static hosting, no build config needed.
 | Hosting | [Vercel](https://vercel.com) |
 | Backend / Database | [Supabase](https://supabase.com) |
 | Charts | [Chart.js](https://www.chartjs.org/) |
-| AI analysis | [Groq](https://groq.com) (`llama-3.3-70b-versatile`) |
+| AI analysis | [Groq](https://groq.com) (`openai/gpt-oss-120b`) |
 | Icons | [Feather Icons](https://feathericons.com/) |
 | Typography | [DM Sans](https://fonts.google.com/specimen/DM+Sans) |
