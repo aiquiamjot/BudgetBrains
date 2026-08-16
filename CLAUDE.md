@@ -129,3 +129,20 @@ not in `bb_fees`. They are configuration only — nothing tracks consumption.
 
 Subitem ids are unique within a Profile, not across them. Duplicating a Profile copies
 subitem ids verbatim so `bb_biweekly` and `bb_bankAssign` carry over without remapping.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `aiquiamjot/BudgetBrains`, managed with the `gh` CLI.
+See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, unmapped — each label string equals its role name.
+See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root.
+See `docs/agents/domain.md`.
