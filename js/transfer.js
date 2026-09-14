@@ -93,6 +93,7 @@ function renderTransfer() {
       <div class="transfer-calc-header">
         <h4>Optimal Transfer Sequence</h4>
       </div>
+      <div id="unassigned-warning"></div>
       <p class="source-note">Salary is assumed to land in <strong>${esc(banks[0].name)}</strong> (first bank). Only checked routes are used.</p>
       <div id="calc-result"></div>
     </div>
@@ -206,6 +207,7 @@ function calcSequence() {
   if (!banks.length) return;
 
   const bankById = id => banks.find(b => b.id === id);
+  const sourceId = banks[0].id;
   const PERIOD = { daily:'day', weekly:'week', monthly:'month' };
   const freeNote = fromId => {
     const b = bankById(fromId);
@@ -213,27 +215,21 @@ function calcSequence() {
     return fl ? ` (${fl} free/${PERIOD[b.resetPeriod||'monthly']})` : '';
   };
 
-  // Build bank needs for one cutoff ('cutoff1' or 'cutoff2').
-  // Items assigned 'both' contribute half their amount to each cutoff.
-  // Unassigned items are treated the same as 'both' — a known quirk kept
-  // as-is here; see CONTEXT.md (Cutoff Plan) for why this disagrees with
-  // the Biweekly tab, which counts an unassigned item toward neither.
+  // Build bank needs for one cutoff ('cutoff1' or 'cutoff2') through the
+  // Cutoff Plan's amountIn, so an unassigned Subitem contributes nothing to
+  // either cutoff — agreeing with the Biweekly tab. See docs/adr/0006-*.
   function buildNeeds(cutoff) {
     const needs = {};
     banks.forEach(b => { needs[b.id] = 0; });
     subitems.forEach(it => {
       const bid = S.bankAssign[it.id];
       if (!bid || needs[bid] === undefined) return;
-      const assign = biweekly.assignments?.[it.id];
-      const amt = Number(it.amount || 0);
-      if (assign === cutoff) needs[bid] += amt;
-      else if (assign === 'both' || !assign) needs[bid] += amt / 2;
+      needs[bid] += CutoffPlan.amountIn(biweekly, it, cutoff);
     });
     return needs;
   }
 
   function renderSteps(needs) {
-    const sourceId = banks[0].id;
     const steps = TransferPlanner.plan({ banks, fees, sourceId, needs });
     return steps.map(st => {
       const parts = [];
@@ -270,6 +266,15 @@ function calcSequence() {
       </div>
       <div class="total-fees-bar">Transfer Fees: <strong>${fmt(totalFee)}</strong></div>`;
   }
+
+  const unfundedItems = CutoffPlan.unassigned(biweekly, subitems).filter(it => {
+    const bid = S.bankAssign[it.id];
+    return bid && bid !== 'cash' && bid !== sourceId && bankById(bid);
+  });
+  const warnEl = ri('unassigned-warning');
+  warnEl.innerHTML = unfundedItems.length
+    ? `<p class="warn-note">⚠ No Transfer planned for: ${unfundedItems.map(it => esc(it.name)).join(', ')} — assign a Cutoff in the Biweekly tab to fund ${unfundedItems.length===1?'it':'them'}.</p>`
+    : '';
 
   const steps1 = renderSteps(buildNeeds('cutoff1'));
   const steps2 = renderSteps(buildNeeds('cutoff2'));

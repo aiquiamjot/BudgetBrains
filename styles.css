@@ -535,6 +535,12 @@ select:focus { outline: none; border-color: var(--accent); }
 .free-inp { width: 65px; }
 .fee-badge.warn { background: #fef3c7; color: #92400e; }
 [data-theme="dark"] .fee-badge.warn { background: #3a2a0a; color: #fbbf24; }
+.warn-note {
+  font-size: .8rem; color: var(--warn);
+  background: #fef3c7; border-left: 3px solid var(--warn);
+  padding: .5rem .7rem; border-radius: var(--radius-sm); margin-bottom: .75rem;
+}
+[data-theme="dark"] .warn-note { background: #3a2a0a; color: #fbbf24; }
 .transfer-calc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
 .routes-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
 .routes-card-header h4 { margin: 0; }
