@@ -202,8 +202,7 @@ function bindOverview() {
   document.querySelectorAll('#tab-overview .del-item').forEach(btn => {
     btn.addEventListener('click', () => {
       S.overview.subitems = S.overview.subitems.filter(i => i.id !== btn.dataset.id);
-      delete S.biweekly.assignments[btn.dataset.id];
-      delete S.biweekly.forced[btn.dataset.id];
+      CutoffPlan.forget(S.biweekly, btn.dataset.id);
       delete S.bankAssign[btn.dataset.id];
       save('overview','biweekly','bankAssign'); renderOverview();
     });

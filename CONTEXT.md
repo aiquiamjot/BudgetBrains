@@ -46,6 +46,11 @@ code; only the table column header abbreviates to "Force", because it sits benea
 Assign to Cutoff column that supplies the other half of the phrase.
 _Avoid_: Lock, pin, freeze
 
+**Cutoff Plan**:
+A Profile's Cutoff assignments and Force Assignments together — the `{ assignments,
+forced }` shape stored as `bb_biweekly`. Held behind the `CutoffPlan` module
+(`js/cutoffPlan.js`), which is the only place that knows what a Cutoff assignment means.
+
 ### Money movement
 
 **Bank**:
@@ -64,6 +69,11 @@ The cost of moving money along a Route once the free-transfer quota is used up.
 **Transfer**:
 A movement of money from one Bank to another needed to fund the Subitems assigned to
 the destination.
+
+**Salary source**:
+The Bank a Profile's Net Pay lands in, currently the first registered Bank. The
+Transfer planner (`js/transferPlanner.js`) never routes a Transfer to it, only from
+it. See `docs/adr/0004-*`.
 
 ### Analysis
 

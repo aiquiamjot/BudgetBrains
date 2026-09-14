@@ -194,7 +194,7 @@ function hydrateProfile(id) {
      entirely and the loaded plan arrives with no `forced` map at all. Runs here so it
      covers both the first load and every profile switch, and mutates in place because
      the line above just pointed S.biweekly at the cached object. */
-  normaliseBiweekly(d.biweekly);
+  CutoffPlan.normalise(d.biweekly);
   for (const k in LOCAL_PROFILE_KEYS) S[k] = readLocal(profileLocalKey(k, id), DEFAULTS[k]);
 }
 

@@ -18,6 +18,18 @@ On Windows, `launch.bat` opens Chrome directly to `index.html`.
 
 Deploy target is Vercel (static hosting, no build config needed).
 
+## Tests
+
+```bash
+node --test
+```
+
+Nothing to install — Node's built-in test runner. Test files live in `test/`, and load
+the app's plain script files into a sandboxed `vm` context via the helper in
+`test-helpers/loadScript.js`, so the source files stay browser globals with no module
+syntax. Tests exercise a module only through its interface, never through DOM,
+`save()`, or Supabase.
+
 ## Architecture
 
 ### State Management (`js/state.js`)
@@ -75,18 +87,40 @@ Each tab is a self-contained JS module:
 | `js/overview.js` | Overview | Net pay, Needs/Wants/Savings splits, subitems, Chart.js donut + bar charts |
 | `js/biweekly.js` | Biweekly | Assign subitems to Cutoff 1/2/Both; greedy bin-packing Auto-Suggest |
 | `js/banks.js` | Banks | Register banks/e-wallets, assign subitems to accounts, per-bank totals |
-| `js/transfer.js` | Transfer | Route fees, free-transfer quotas, graph-based optimal transfer sequencing |
+| `js/transfer.js` | Transfer | Route/fee config UI, manual transfer steps, builds per-Cutoff Bank needs and renders `TransferPlanner`'s steps |
 
 `js/profiles.js` is not a tab — it renders the Profile switcher into the topbar and owns
 Profile create/duplicate/rename/delete/switch.
+
+`js/cutoffPlan.js` is not a tab either. It holds the Cutoff Plan module — a pure,
+DOM-free namespace object (`CutoffPlan`) covering the Cutoff rules and Force Assign
+rules for one Profile: `normalise`, `amountIn`, `itemsIn`, `totals`, `unassigned`,
+`assign`, `unassign`, `setForced`, `forget`, `autoSuggest`. It is loaded before
+`js/state.js`, which calls `CutoffPlan.normalise` while hydrating a Profile. The
+Biweekly tab renders and mutates through it; the Overview Subitem delete handler calls
+`CutoffPlan.forget`. See [CONTEXT.md](CONTEXT.md) for the term.
 
 Because Banks are Account-level but `bankAssign` is per-Profile, `deleteBank()` in
 `js/banks.js` must strip the bank from **every** Profile's `bankAssign`, not just the
 Active one.
 
-### Transfer Route Algorithm (`js/transfer.js`)
+`js/transferPlanner.js` is not a tab either. It holds the Transfer planner — a pure,
+DOM-free namespace object (`TransferPlanner`) with one function, `plan({ banks, fees,
+sourceId, needs })`, returning Transfer steps as Bank ids, amounts, Fees and
+routing-for ids. It owns the Fee-key format used to look up a Route's Fee. The
+Transfer tab calls it once per Cutoff, passing the first registered Bank as the
+Salary source (see [CONTEXT.md](CONTEXT.md)), and turns the returned steps into Bank
+names, quota notes and "Routing for …" text at render time.
 
-The most complex module. It builds an adjacency graph from configured routes and fees, then for each required transfer finds the cheapest path (direct or via intermediary bank). Results are split into Cutoff 1 and Cutoff 2 sequences, sorted by fee ascending, with same-source/destination transfers merged.
+### Transfer Route Algorithm (`js/transferPlanner.js`)
+
+The most complex module. `TransferPlanner.plan` builds an adjacency graph from the
+given Banks and Fees, then for each Bank with a nonzero need finds the cheapest path
+from the Salary source (direct, or via a single intermediary Bank, taken only when
+strictly cheaper). Steps sharing the same Bank pair are merged, summing amounts and
+combining `routingFor`. Results are sorted by Fee ascending, with no-Route steps
+(`fee: null`) last. A Bank with a free-transfer quota above 0 gives Fee 0 on its
+outgoing Routes.
 
 ### Auth (`js/auth.js`)
 

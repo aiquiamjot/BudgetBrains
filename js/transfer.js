@@ -93,6 +93,7 @@ function renderTransfer() {
       <div class="transfer-calc-header">
         <h4>Optimal Transfer Sequence</h4>
       </div>
+      <div id="unassigned-warning"></div>
       <p class="source-note">Salary is assumed to land in <strong>${esc(banks[0].name)}</strong> (first bank). Only checked routes are used.</p>
       <div id="calc-result"></div>
     </div>
@@ -206,13 +207,7 @@ function calcSequence() {
   if (!banks.length) return;
 
   const bankById = id => banks.find(b => b.id === id);
-  const getFee = (fromId, toId) => {
-    const f = fees[`${fromId}_${toId}`];
-    if (!f) return Infinity;
-    const fromBank = bankById(fromId);
-    if (fromBank && Number(fromBank.freeLimit) > 0) return 0;
-    return Number(f.fee) || 0;
-  };
+  const sourceId = banks[0].id;
   const PERIOD = { daily:'day', weekly:'week', monthly:'month' };
   const freeNote = fromId => {
     const b = bankById(fromId);
@@ -220,72 +215,40 @@ function calcSequence() {
     return fl ? ` (${fl} free/${PERIOD[b.resetPeriod||'monthly']})` : '';
   };
 
-  // Build bank totals for one cutoff ('cutoff1' or 'cutoff2').
-  // Items assigned 'both' contribute half their amount to each cutoff.
-  // Unassigned items are treated the same as 'both'.
-  function buildTotals(cutoff) {
-    const totals = {};
-    banks.forEach(b => { totals[b.id] = 0; });
+  // Build bank needs for one cutoff ('cutoff1' or 'cutoff2') through the
+  // Cutoff Plan's amountIn, so an unassigned Subitem contributes nothing to
+  // either cutoff — agreeing with the Biweekly tab. See docs/adr/0006-*.
+  function buildNeeds(cutoff) {
+    const needs = {};
+    banks.forEach(b => { needs[b.id] = 0; });
     subitems.forEach(it => {
       const bid = S.bankAssign[it.id];
-      if (!bid || totals[bid] === undefined) return;
-      const assign = biweekly.assignments?.[it.id];
-      const amt = Number(it.amount || 0);
-      if (assign === cutoff) totals[bid] += amt;
-      else if (assign === 'both' || !assign) totals[bid] += amt / 2;
+      if (!bid || needs[bid] === undefined) return;
+      needs[bid] += CutoffPlan.amountIn(biweekly, it, cutoff);
     });
-    return totals;
+    return needs;
   }
 
-  function computeSteps(totals) {
-    const src = banks[0];
-    const raw = [];
-    banks.slice(1).forEach(dest => {
-      const amt = totals[dest.id];
-      if (!amt) return;
-      const direct = getFee(src.id, dest.id);
-      let bestHub = null, bestHubFee = Infinity;
-      banks.forEach(hub => {
-        if (hub.id === src.id || hub.id === dest.id) return;
-        const hf = getFee(src.id, hub.id) + getFee(hub.id, dest.id);
-        if (hf < bestHubFee) { bestHubFee = hf; bestHub = hub; }
-      });
-      if (bestHub && bestHubFee < direct) {
-        raw.push({ fromId:src.id, toId:bestHub.id, from:src.name, to:bestHub.name, amt, fee:getFee(src.id,bestHub.id), routingFor:[dest.name], fn:freeNote(src.id) });
-        raw.push({ fromId:bestHub.id, toId:dest.id, from:bestHub.name, to:dest.name, amt, fee:getFee(bestHub.id,dest.id), routingFor:[], fn:freeNote(bestHub.id) });
-      } else {
-        raw.push({ fromId:src.id, toId:dest.id, from:src.name, to:dest.name, amt, fee:direct, routingFor:[], fn:freeNote(src.id) });
-      }
-    });
-
-    // Consolidate steps that share the same from→to into one transaction
-    const mergeMap = new Map();
-    raw.forEach(step => {
-      const key = `${step.fromId}_${step.toId}`;
-      if (mergeMap.has(key)) {
-        const m = mergeMap.get(key);
-        m.amt += step.amt;
-        step.routingFor.forEach(d => { if (!m.routingFor.includes(d)) m.routingFor.push(d); });
-      } else {
-        mergeMap.set(key, { ...step, routingFor: [...step.routingFor] });
-      }
-    });
-
-    const merged = Array.from(mergeMap.values());
-    merged.forEach(st => {
+  function renderSteps(needs) {
+    const steps = TransferPlanner.plan({ banks, fees, sourceId, needs });
+    return steps.map(st => {
       const parts = [];
-      if (st.routingFor.length) parts.push(`Routing for ${st.routingFor.join(', ')}`);
-      if (st.fn) parts.push(st.fn.trim());
-      st.note = parts.join(' ');
+      if (st.routingFor.length) parts.push(`Routing for ${st.routingFor.map(id => bankById(id)?.name || id).join(', ')}`);
+      const fn = freeNote(st.fromId);
+      if (fn) parts.push(fn.trim());
+      return {
+        from: bankById(st.fromId)?.name || st.fromId,
+        to: bankById(st.toId)?.name || st.toId,
+        amt: st.amount,
+        fee: st.fee,
+        note: parts.join(' '),
+      };
     });
-
-    merged.sort((a, b) => a.fee - b.fee);
-    return merged;
   }
 
   function stepsHTML(steps) {
     if (!steps.length) return '<p class="muted" style="margin:.25rem 0">No transfers needed for this cutoff.</p>';
-    const totalFee = steps.filter(st => st.fee !== Infinity).reduce((s, st) => s + st.fee, 0);
+    const totalFee = steps.filter(st => st.fee !== null).reduce((s, st) => s + st.fee, 0);
     return `
       <div class="transfer-steps">
         ${steps.map((st, i) => `
@@ -296,7 +259,7 @@ function calcSequence() {
               <i data-feather="arrow-right" style="width:14px;height:14px;opacity:.5"></i>
               <span class="step-bank">${esc(st.to)}</span>
               <span class="step-amount">${fmt(st.amt)}</span>
-              <span class="fee-badge ${st.fee===Infinity?'warn':st.fee===0?'free':'paid'}">${st.fee===Infinity?'⚠ No route':st.fee===0?'Free':'Fee: '+fmt(st.fee)}</span>
+              <span class="fee-badge ${st.fee===null?'warn':st.fee===0?'free':'paid'}">${st.fee===null?'⚠ No route':st.fee===0?'Free':'Fee: '+fmt(st.fee)}</span>
               ${st.note?`<span class="step-note">${esc(st.note)}</span>`:''}
             </div>
           </div>`).join('')}
@@ -304,8 +267,17 @@ function calcSequence() {
       <div class="total-fees-bar">Transfer Fees: <strong>${fmt(totalFee)}</strong></div>`;
   }
 
-  const steps1 = computeSteps(buildTotals('cutoff1'));
-  const steps2 = computeSteps(buildTotals('cutoff2'));
+  const unfundedItems = CutoffPlan.unassigned(biweekly, subitems).filter(it => {
+    const bid = S.bankAssign[it.id];
+    return bid && bid !== 'cash' && bid !== sourceId && bankById(bid);
+  });
+  const warnEl = ri('unassigned-warning');
+  warnEl.innerHTML = unfundedItems.length
+    ? `<p class="warn-note">⚠ No Transfer planned for: ${unfundedItems.map(it => esc(it.name)).join(', ')} — assign a Cutoff in the Biweekly tab to fund ${unfundedItems.length===1?'it':'them'}.</p>`
+    : '';
+
+  const steps1 = renderSteps(buildNeeds('cutoff1'));
+  const steps2 = renderSteps(buildNeeds('cutoff2'));
   const res = ri('calc-result');
 
   if (!steps1.length && !steps2.length) {
