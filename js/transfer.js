@@ -215,7 +215,9 @@ function calcSequence() {
 
   // Build bank needs for one cutoff ('cutoff1' or 'cutoff2').
   // Items assigned 'both' contribute half their amount to each cutoff.
-  // Unassigned items are treated the same as 'both'. (Reversed by #11.)
+  // Unassigned items are treated the same as 'both' — a known quirk kept
+  // as-is here; see CONTEXT.md (Cutoff Plan) for why this disagrees with
+  // the Biweekly tab, which counts an unassigned item toward neither.
   function buildNeeds(cutoff) {
     const needs = {};
     banks.forEach(b => { needs[b.id] = 0; });
@@ -242,7 +244,7 @@ function calcSequence() {
         from: bankById(st.fromId)?.name || st.fromId,
         to: bankById(st.toId)?.name || st.toId,
         amt: st.amount,
-        fee: st.fee === null ? Infinity : st.fee,
+        fee: st.fee,
         note: parts.join(' '),
       };
     });
@@ -250,7 +252,7 @@ function calcSequence() {
 
   function stepsHTML(steps) {
     if (!steps.length) return '<p class="muted" style="margin:.25rem 0">No transfers needed for this cutoff.</p>';
-    const totalFee = steps.filter(st => st.fee !== Infinity).reduce((s, st) => s + st.fee, 0);
+    const totalFee = steps.filter(st => st.fee !== null).reduce((s, st) => s + st.fee, 0);
     return `
       <div class="transfer-steps">
         ${steps.map((st, i) => `
@@ -261,7 +263,7 @@ function calcSequence() {
               <i data-feather="arrow-right" style="width:14px;height:14px;opacity:.5"></i>
               <span class="step-bank">${esc(st.to)}</span>
               <span class="step-amount">${fmt(st.amt)}</span>
-              <span class="fee-badge ${st.fee===Infinity?'warn':st.fee===0?'free':'paid'}">${st.fee===Infinity?'⚠ No route':st.fee===0?'Free':'Fee: '+fmt(st.fee)}</span>
+              <span class="fee-badge ${st.fee===null?'warn':st.fee===0?'free':'paid'}">${st.fee===null?'⚠ No route':st.fee===0?'Free':'Fee: '+fmt(st.fee)}</span>
               ${st.note?`<span class="step-note">${esc(st.note)}</span>`:''}
             </div>
           </div>`).join('')}

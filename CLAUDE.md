@@ -87,7 +87,7 @@ Each tab is a self-contained JS module:
 | `js/overview.js` | Overview | Net pay, Needs/Wants/Savings splits, subitems, Chart.js donut + bar charts |
 | `js/biweekly.js` | Biweekly | Assign subitems to Cutoff 1/2/Both; greedy bin-packing Auto-Suggest |
 | `js/banks.js` | Banks | Register banks/e-wallets, assign subitems to accounts, per-bank totals |
-| `js/transfer.js` | Transfer | Route fees, free-transfer quotas, graph-based optimal transfer sequencing |
+| `js/transfer.js` | Transfer | Route/fee config UI, manual transfer steps, builds per-Cutoff Bank needs and renders `TransferPlanner`'s steps |
 
 `js/profiles.js` is not a tab — it renders the Profile switcher into the topbar and owns
 Profile create/duplicate/rename/delete/switch.
