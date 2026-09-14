@@ -18,6 +18,18 @@ On Windows, `launch.bat` opens Chrome directly to `index.html`.
 
 Deploy target is Vercel (static hosting, no build config needed).
 
+## Tests
+
+```bash
+node --test
+```
+
+Nothing to install — Node's built-in test runner. Test files live in `test/`, and load
+the app's plain script files into a sandboxed `vm` context via the helper in
+`test-helpers/loadScript.js`, so the source files stay browser globals with no module
+syntax. Tests exercise a module only through its interface, never through DOM,
+`save()`, or Supabase.
+
 ## Architecture
 
 ### State Management (`js/state.js`)
@@ -79,6 +91,14 @@ Each tab is a self-contained JS module:
 
 `js/profiles.js` is not a tab — it renders the Profile switcher into the topbar and owns
 Profile create/duplicate/rename/delete/switch.
+
+`js/cutoffPlan.js` is not a tab either. It holds the Cutoff Plan module — a pure,
+DOM-free namespace object (`CutoffPlan`) covering the Cutoff rules and Force Assign
+rules for one Profile: `normalise`, `amountIn`, `itemsIn`, `totals`, `unassigned`,
+`assign`, `unassign`, `setForced`, `forget`, `autoSuggest`. It is loaded before
+`js/state.js`, which calls `CutoffPlan.normalise` while hydrating a Profile. The
+Biweekly tab renders and mutates through it; the Overview Subitem delete handler calls
+`CutoffPlan.forget`. See [CONTEXT.md](CONTEXT.md) for the term.
 
 Because Banks are Account-level but `bankAssign` is per-Profile, `deleteBank()` in
 `js/banks.js` must strip the bank from **every** Profile's `bankAssign`, not just the

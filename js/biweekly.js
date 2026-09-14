@@ -1,11 +1,10 @@
 'use strict';
 /* ═══════════════════════════════════════════════════════════════════════════
    BIWEEKLY
+   Cutoff logic (amounts, totals, assignment, Force Assign, Auto-Suggest)
+   lives in js/cutoffPlan.js — this module renders from it and keeps the
+   display copy.
 ═══════════════════════════════════════════════════════════════════════════ */
-function normaliseBiweekly(plan) {
-  if (!plan.forced) plan.forced = {};
-}
-
 const BW_BALANCE_HINT = 'Balance subitems as evenly as possible between both cutoffs';
 
 /* The count appears only once something is Force Assigned — "0 of 8" on a first visit
@@ -50,14 +49,14 @@ function renderBiweekly() {
   }).join('');
 
   function panel(label, key) {
-    const items = subitems.filter(i => { const a = asgn[i.id]; return a===key||a==='both'; });
-    const total = items.reduce((s,i) => s+(asgn[i.id]==='both'?Number(i.amount)/2:Number(i.amount)), 0);
+    const items = CutoffPlan.itemsIn(S.biweekly, subitems, key);
+    const total = items.reduce((s,i) => s + CutoffPlan.amountIn(S.biweekly, i, key), 0);
     const rem   = half - total;
     const list  = items.length
       ? items.map(i => `<div class="cutoff-item">
           <span>${esc(i.name||'(unnamed)')}${forced[i.id]
             ? ' <i data-feather="lock" class="force-lock" title="Force Assigned"></i>' : ''}</span>
-          <span>${fmt(asgn[i.id]==='both'?Number(i.amount)/2:Number(i.amount))}</span>
+          <span>${fmt(CutoffPlan.amountIn(S.biweekly, i, key))}</span>
         </div>`).join('')
       : '<div class="cutoff-empty">No items assigned</div>';
     return `<div class="card cutoff-card">
@@ -95,11 +94,10 @@ function renderBiweekly() {
       if (e.target.value) {
         // Moving between cutoffs keeps the Force Assignment — the mark means "Auto-Suggest
         // keeps its hands off this", an intent that does not lapse on a change of placement.
-        S.biweekly.assignments[id] = e.target.value;
+        CutoffPlan.assign(S.biweekly, id, e.target.value);
       } else {
         // Unassigned releases it, since the checkbox is about to be disabled.
-        delete S.biweekly.assignments[id];
-        delete S.biweekly.forced[id];
+        CutoffPlan.unassign(S.biweekly, id);
       }
       save('biweekly'); renderBiweekly();
     });
@@ -107,49 +105,13 @@ function renderBiweekly() {
   ri('tab-biweekly').querySelectorAll('.bw-force').forEach(box => {
     box.addEventListener('change', e => {
       const id = e.target.dataset.id;
-      // Only ids present in the map are Force Assigned — unticking deletes rather than
-      // storing false, so the saved plan never accumulates dead entries.
-      if (e.target.checked) S.biweekly.forced[id] = true;
-      else delete S.biweekly.forced[id];
+      CutoffPlan.setForced(S.biweekly, id, e.target.checked);
       save('biweekly'); renderBiweekly();
     });
   });
 }
 
-/* The packing seam: the balancing rules with no state, no save and no DOM, so they can
-   be reasoned about on their own. Takes the Subitems, the current Cutoff assignments and
-   the Force Assigned ids, and returns a new assignments map.
-
-   Force Assigned Subitems keep their placement verbatim and seed their cutoff's running
-   total, so the free Subitems flow toward whichever side actually has room. They are
-   honoured even when they overrun Half Pay — nothing is clamped or dropped, and the red
-   Remaining figure on the panel is how that gets reported. Free Subitems are still never
-   placed in Both; Both is a choice only a person makes, and Force Assign is what carries
-   it through a press. See docs/specs/0001-force-assign.md and docs/adr/0005-*. */
-function balanceCutoffs(subitems, assignments, forced = {}) {
-  const asgn = {};
-  let t1 = 0, t2 = 0;
-  const free = [];
-  for (const it of subitems) {
-    const a = assignments[it.id];
-    if (forced[it.id] && a) {
-      asgn[it.id] = a;
-      // Both contributes half to each side, matching how the Cutoff panels total it.
-      if      (a === 'both')    { t1 += Number(it.amount) / 2; t2 += Number(it.amount) / 2; }
-      else if (a === 'cutoff1')   t1 += Number(it.amount);
-      else                        t2 += Number(it.amount);
-    } else free.push(it);
-  }
-  // Copied before sorting — the caller's subitems array is not ours to reorder.
-  for (const it of [...free].sort((a, b) => Number(b.amount) - Number(a.amount))) {
-    if (t1 <= t2) { asgn[it.id] = 'cutoff1'; t1 += Number(it.amount); }
-    else          { asgn[it.id] = 'cutoff2'; t2 += Number(it.amount); }
-  }
-  return asgn;
-}
-
 function autoSuggest() {
-  S.biweekly.assignments = balanceCutoffs(
-    S.overview.subitems, S.biweekly.assignments, S.biweekly.forced);
+  CutoffPlan.autoSuggest(S.biweekly, S.overview.subitems);
   save('biweekly'); renderBiweekly();
 }

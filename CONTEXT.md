@@ -46,6 +46,11 @@ code; only the table column header abbreviates to "Force", because it sits benea
 Assign to Cutoff column that supplies the other half of the phrase.
 _Avoid_: Lock, pin, freeze
 
+**Cutoff Plan**:
+A Profile's Cutoff assignments and Force Assignments together — the `{ assignments,
+forced }` shape stored as `bb_biweekly`. Held behind the `CutoffPlan` module
+(`js/cutoffPlan.js`), which is the only place that knows what a Cutoff assignment means.
+
 ### Money movement
 
 **Bank**:
