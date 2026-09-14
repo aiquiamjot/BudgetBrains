@@ -70,6 +70,11 @@ The cost of moving money along a Route once the free-transfer quota is used up.
 A movement of money from one Bank to another needed to fund the Subitems assigned to
 the destination.
 
+**Salary source**:
+The Bank a Profile's Net Pay lands in, currently the first registered Bank. The
+Transfer planner (`js/transferPlanner.js`) never routes a Transfer to it, only from
+it. See `docs/adr/0004-*`.
+
 ### Analysis
 
 **Spending Personality**:

@@ -104,9 +104,23 @@ Because Banks are Account-level but `bankAssign` is per-Profile, `deleteBank()` 
 `js/banks.js` must strip the bank from **every** Profile's `bankAssign`, not just the
 Active one.
 
-### Transfer Route Algorithm (`js/transfer.js`)
+`js/transferPlanner.js` is not a tab either. It holds the Transfer planner — a pure,
+DOM-free namespace object (`TransferPlanner`) with one function, `plan({ banks, fees,
+sourceId, needs })`, returning Transfer steps as Bank ids, amounts, Fees and
+routing-for ids. It owns the Fee-key format used to look up a Route's Fee. The
+Transfer tab calls it once per Cutoff, passing the first registered Bank as the
+Salary source (see [CONTEXT.md](CONTEXT.md)), and turns the returned steps into Bank
+names, quota notes and "Routing for …" text at render time.
 
-The most complex module. It builds an adjacency graph from configured routes and fees, then for each required transfer finds the cheapest path (direct or via intermediary bank). Results are split into Cutoff 1 and Cutoff 2 sequences, sorted by fee ascending, with same-source/destination transfers merged.
+### Transfer Route Algorithm (`js/transferPlanner.js`)
+
+The most complex module. `TransferPlanner.plan` builds an adjacency graph from the
+given Banks and Fees, then for each Bank with a nonzero need finds the cheapest path
+from the Salary source (direct, or via a single intermediary Bank, taken only when
+strictly cheaper). Steps sharing the same Bank pair are merged, summing amounts and
+combining `routingFor`. Results are sorted by Fee ascending, with no-Route steps
+(`fee: null`) last. A Bank with a free-transfer quota above 0 gives Fee 0 on its
+outgoing Routes.
 
 ### Auth (`js/auth.js`)
 
