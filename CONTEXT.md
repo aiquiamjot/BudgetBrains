@@ -68,7 +68,8 @@ The cost of moving money along a Route once the free-transfer quota is used up.
 
 **Transfer**:
 A movement of money from one Bank to another needed to fund the Subitems assigned to
-the destination.
+the destination. What each Cutoff's Transfers fund is decided in one place, the
+Transfer funding module (`js/transferFunding.js`).
 
 **Salary source**:
 The Bank a Profile's Net Pay lands in, currently the first registered Bank. The

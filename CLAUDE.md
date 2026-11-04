@@ -87,7 +87,7 @@ Each tab is a self-contained JS module:
 | `js/overview.js` | Overview | Net pay, Needs/Wants/Savings splits, subitems, Chart.js donut + bar charts |
 | `js/biweekly.js` | Biweekly | Assign subitems to Cutoff 1/2/Both; greedy bin-packing Auto-Suggest |
 | `js/banks.js` | Banks | Register banks/e-wallets, assign subitems to accounts, per-bank totals |
-| `js/transfer.js` | Transfer | Route/fee config UI, manual transfer steps, builds per-Cutoff Bank needs and renders `TransferPlanner`'s steps |
+| `js/transfer.js` | Transfer | Route/fee config UI, manual transfer steps, renders the per-Cutoff steps from one `TransferFunding.fund` call |
 
 `js/profiles.js` is not a tab — it renders the Profile switcher into the topbar and owns
 Profile create/duplicate/rename/delete/switch.
@@ -107,10 +107,21 @@ Active one.
 `js/transferPlanner.js` is not a tab either. It holds the Transfer planner — a pure,
 DOM-free namespace object (`TransferPlanner`) with one function, `plan({ banks, fees,
 sourceId, needs })`, returning Transfer steps as Bank ids, amounts, Fees and
-routing-for ids. It owns the Fee-key format used to look up a Route's Fee. The
-Transfer tab calls it once per Cutoff, passing the first registered Bank as the
-Salary source (see [CONTEXT.md](CONTEXT.md)), and turns the returned steps into Bank
-names, quota notes and "Routing for …" text at render time.
+routing-for ids. It owns the Fee-key format used to look up a Route's Fee. It knows
+nothing about Subitems or Cutoffs.
+
+`js/transferFunding.js` is not a tab either. It holds the Transfer funding module — a
+pure, DOM-free namespace object (`TransferFunding`) with one function, `fund({ banks,
+fees, sourceId, subitems, cutoffPlan, bankAssign })`, returning `{ cutoff1, cutoff2,
+unfunded }`. It is loaded after `js/cutoffPlan.js` and `js/transferPlanner.js` and
+calls both: each Cutoff's Bank need is the sum of the Cutoff Plan's `amountIn` over
+Subitems whose Bank assignment is a registered Bank (Cash, a deleted Bank or no Bank
+assignment contribute nothing), and `cutoff1` / `cutoff2` are exactly what
+`TransferPlanner.plan` returns for that Cutoff. `unfunded` is currently always empty —
+the Transfer tab still derives its "No Transfer planned for …" warning inline. The
+Salary source is an input; the Transfer tab passes the first registered Bank (see
+[CONTEXT.md](CONTEXT.md)), makes one `fund` call, and turns the returned steps into
+Bank names, quota notes and "Routing for …" text at render time.
 
 ### Transfer Route Algorithm (`js/transferPlanner.js`)
 
