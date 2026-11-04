@@ -74,18 +74,6 @@ const DEFAULTS = {
 const S = {};
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LOCALSTORAGE
-   Profile-lifecycle leftover — moves into the Profile store with delete.
-═══════════════════════════════════════════════════════════════════════════ */
-function profileLocalKey(k, profileId) { return LOCAL_PROFILE_KEYS[k] + ':' + profileId; }
-
-function clearProfileLocal(profileId) {
-  for (const k in LOCAL_PROFILE_KEYS) {
-    try { localStorage.removeItem(profileLocalKey(k, profileId)); } catch {}
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
    PROFILE STORE
    Loads, activates and saves the flat state object behind two adapters, so it
    runs in the test runner with no database and no browser:
@@ -101,6 +89,9 @@ function clearProfileLocal(profileId) {
    owns everything backend-specific (the user id, the conflict target).
    js/wiring.js builds the real adapters and the global save / loadState.
 ═══════════════════════════════════════════════════════════════════════════ */
+// Stored as `${prefix}:${profileId}` in the local adapter.
+function profileLocalKey(k, profileId) { return LOCAL_PROFILE_KEYS[k] + ':' + profileId; }
+
 const ProfileStore = {
   create({ state: S, remote, local }) {
     function readLocal(storageKey, fallback) {
@@ -251,6 +242,56 @@ const ProfileStore = {
       );
     }
 
-    return { load, activate, save, saveProfile };
+    /* Creates a Profile and makes it Active. With copyFromId every per-Profile key is
+       deep-copied, Subitem ids verbatim (they are unique within a Profile, not across
+       them, so Cutoff and Bank assignments carry over with no remapping). Returns the
+       new id; persistence is fire-and-forget like save. */
+    function create(name, copyFromId) {
+      const id  = genId();
+      const src = copyFromId ? S._profileData[copyFromId] : null;
+
+      S._profileData[id] = {};
+      for (const k in PROFILE_KEYS) S._profileData[id][k] = clone(src?.[k] ?? DEFAULTS[k]);
+
+      S.profiles.push({ id, name });
+      save('profiles');
+
+      activate(id);
+      save('activeProfile');
+      save(...Object.keys(PROFILE_KEYS));
+      return id;
+    }
+
+    function rename(profileId, name) {
+      const p = S.profiles.find(x => x.id === profileId);
+      if (!p) return Promise.resolve();
+      p.name = name;
+      return save('profiles');
+    }
+
+    /* Deletes a Profile's remote rows and device-local keys; Banks, Routes and Fees are
+       Account-level and untouched. Throws on the last Profile. */
+    function remove(profileId) {
+      if (S.profiles.length <= 1) throw new Error('An account needs at least one profile');
+
+      S.profiles = S.profiles.filter(x => x.id !== profileId);
+      delete S._profileData[profileId];
+      const writes = [save('profiles')];
+
+      writes.push(new Promise(resolve => resolve(remote.deleteScope(profileId)))
+        .then(res => { if (res?.error) console.error('Delete failed for profile', profileId, res.error.message); })
+        .catch(e => console.error('Delete failed for profile', profileId, e?.message ?? e)));
+      for (const k in LOCAL_PROFILE_KEYS) {
+        try { local.removeItem(profileLocalKey(k, profileId)); } catch {}
+      }
+
+      if (S.activeProfile === profileId) {
+        activate(S.profiles[0].id);
+        writes.push(save('activeProfile'));
+      }
+      return Promise.all(writes).then(() => {});
+    }
+
+    return { load, activate, save, saveProfile, create, rename, remove };
   },
 };

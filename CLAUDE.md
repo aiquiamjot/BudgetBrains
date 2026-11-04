@@ -49,7 +49,7 @@ The write path is fire-and-forget: `save(key)` immediately writes to localStorag
 
 `js/state.js` holds no Supabase reference. Load, bootstrap, activation and every write
 go through the **Profile store** — a pure, DOM-free namespace object (`ProfileStore`)
-whose `create({ state, remote, local })` returns `{ load, activate, save, saveProfile }`:
+whose `create({ state, remote, local })` returns `{ load, activate, save, saveProfile, create, rename, remove }`:
 
 - `load()` reads device-local keys, fetches every row once, routes them into `state`,
   bootstraps "Main" when there is no Profile list, falls back from a stale Active
@@ -59,6 +59,10 @@ whose `create({ state, remote, local })` returns `{ load, activate, save, savePr
 - `save(...keys)` / `saveProfile(profileId, ...keys)` snapshot the Active Profile id
   before anything asynchronous and return a promise that resolves when the write
   completes. The app ignores it; tests await it.
+- `create(name, copyFromId?)` returns the new Profile id and makes it Active (deep copy of
+  every per-Profile key when a source is given); `rename(profileId, name)`;
+  `remove(profileId)` deletes the remote rows and device-local keys, activates the first
+  remaining Profile if needed, and throws on the last Profile.
 
 The store sits behind two adapters. The **remote adapter** is row-level —
 `loadRows()` → `{ rows: [{ profile_id, key, value }], error }`, `upsert(rows)` →

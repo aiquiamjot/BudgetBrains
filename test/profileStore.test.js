@@ -240,4 +240,74 @@ test('profileStore', async (t) => {
     await store.save('banks');
     assert.equal(logged.length, 1);
   });
+  const settle = () => new Promise(r => setImmediate(r));
+  const active = { local: () => memoryLocal({ bb_activeProfile: 'p1' }) };
+
+  await t.test('create with no source makes an empty default Profile, Active and persisted', async () => {
+    const { state, store, remote } = await loaded(twoProfiles, { local: active.local() });
+    const id = store.create('Fresh');
+    await settle();
+
+    assert.equal(state.activeProfile, id);
+    assert.deepEqual(plain(state.overview), overview(0));
+    assert.equal(state.profiles.at(-1).name, 'Fresh');
+    assert.deepEqual(find(remote, 'account', 'bb_profiles').map(p => p.id), ['p1', 'p2', id]);
+    assert.deepEqual(find(remote, id, 'bb_overview'), overview(0));
+    assert.deepEqual(find(remote, id, 'bb_bankAssign'), {});
+    assert.deepEqual(find(remote, id, 'bb_manual'), []);
+  });
+
+  await t.test('create from a source deep-copies every per-Profile key', async () => {
+    const { state, store, remote } = await loaded(twoProfiles, { local: active.local() });
+    state.overview.subitems.push({ id: 's1', name: 'Rent', category: 'needs', amount: 5 });
+    state.biweekly.assignments.s1 = 'cutoff1';
+    const id = store.create('Copy', 'p1');
+    await settle();
+
+    assert.equal(state.overview.subitems[0].id, 's1');
+    assert.equal(state.biweekly.assignments.s1, 'cutoff1');
+    assert.equal(state.bankAssign.s1, 'b1');
+    assert.equal(find(remote, id, 'bb_bankAssign').s1, 'b1');
+
+    state.overview.subitems[0].name = 'Changed';
+    state.bankAssign.s1 = 'cash';
+    store.activate('p1');
+    assert.equal(state.overview.subitems[0].name, 'Rent');
+    assert.equal(state.bankAssign.s1, 'b1');
+  });
+
+  await t.test('rename persists the new name on the Account Profile list', async () => {
+    const { store, remote, state } = await loaded(twoProfiles, { local: active.local() });
+    store.rename('p2', 'Leaner');
+    await settle();
+    assert.equal(state.profiles[1].name, 'Leaner');
+    assert.equal(find(remote, 'account', 'bb_profiles')[1].name, 'Leaner');
+  });
+
+  await t.test('remove deletes remote rows and local personality, keeps Account rows', async () => {
+    const local = memoryLocal({ bb_activeProfile: 'p1', 'bb_groq_profile:p2': 'x' });
+    const { store, remote, state } = await loaded(twoProfiles, { local });
+    await store.remove('p2');
+
+    assert.deepEqual(state.profiles.map(p => p.id), ['p1']);
+    assert.equal(state._profileData.p2, undefined);
+    assert.equal(remote.rows.some(r => r.profile_id === 'p2'), false);
+    assert.equal(local.getItem('bb_groq_profile:p2'), null);
+    assert.deepEqual(find(remote, 'account', 'bb_profiles').map(p => p.id), ['p1']);
+    assert.ok(find(remote, 'account', 'bb_banks'));
+    assert.ok(find(remote, 'account', 'bb_fees'));
+  });
+
+  await t.test('removing the Active Profile activates the first remaining', async () => {
+    const { store, state } = await loaded(twoProfiles, { local: memoryLocal({ bb_activeProfile: 'p2' }) });
+    await store.remove('p2');
+    assert.equal(state.activeProfile, 'p1');
+    assert.equal(state.overview.netPay, 1000);
+  });
+
+  await t.test('removing the last Profile throws', async () => {
+    const { store } = await loaded(twoProfiles, { local: active.local() });
+    await store.remove('p2');
+    assert.throws(() => store.remove('p1'));
+  });
 });

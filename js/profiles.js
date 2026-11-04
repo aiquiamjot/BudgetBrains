@@ -61,21 +61,7 @@ function newProfile() {
 }
 
 function createProfile(name, copyFromId) {
-  const id  = genId();
-  const src = copyFromId ? S._profileData[copyFromId] : null;
-
-  // Subitem ids are copied verbatim. They are unique within a profile, not across them,
-  // so biweekly.assignments and bankAssign carry over with no remapping.
-  S._profileData[id] = {};
-  for (const k in PROFILE_KEYS) S._profileData[id][k] = clone(src?.[k] ?? DEFAULTS[k]);
-
-  S.profiles.push({ id, name });
-  save('profiles');
-
-  profileStore.activate(id);
-  save('activeProfile');
-  save(...Object.keys(PROFILE_KEYS));
-
+  profileStore.create(name, copyFromId);
   refreshAfterProfileChange();
 }
 
@@ -84,8 +70,7 @@ function renameActiveProfile() {
   if (!p) return;
   const name = (prompt('Rename profile:', p.name) || '').trim();
   if (!name || name === p.name) return;
-  p.name = name;
-  save('profiles');
+  profileStore.rename(p.id, name);
   renderProfileSwitcher();
 }
 
@@ -103,14 +88,6 @@ function deleteActiveProfile() {
   );
   if (!ok) return;
 
-  const gone = p.id;
-  S.profiles = S.profiles.filter(x => x.id !== gone);
-  delete S._profileData[gone];
-  save('profiles');
-  deleteProfileRows(gone);
-  clearProfileLocal(gone);
-
-  profileStore.activate(S.profiles[0].id);
-  save('activeProfile');
+  profileStore.remove(p.id);
   refreshAfterProfileChange();
 }

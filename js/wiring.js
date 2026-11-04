@@ -56,9 +56,3 @@ async function loadState() {
   );
 }
 
-// Profile-lifecycle leftover — moves into the Profile store with delete.
-function deleteProfileRows(profileId) {
-  supabaseRemote.deleteScope(profileId)
-    .then(res => { if (res?.error) console.error('Delete failed for profile', profileId, res.error.message); })
-    .catch(e => console.error('Delete failed for profile', profileId, e?.message ?? e));
-}
