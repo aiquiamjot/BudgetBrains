@@ -11,7 +11,10 @@
    docs/adr/0004-*). An unassigned Subitem funds neither Cutoff (docs/adr/0006-*);
    when its Bank assignment is a registered Bank other than the Salary source it
    is an Unfunded Subitem and comes back in `unfunded`, whatever its amount.
-   See CONTEXT.md (Transfer).
+   Each step's `carries` is the planner's, with every Bank entry given its
+   Transfer breakdown: the Subitems assigned to that Bank with a nonzero
+   amountIn for the Cutoff, in `subitems` order, adding up to the entry's
+   amount. See CONTEXT.md (Transfer, Transfer breakdown).
 ═══════════════════════════════════════════════════════════════════════════ */
 
 const TransferFunding = {
@@ -19,13 +22,20 @@ const TransferFunding = {
     const isBank = id => banks.some(b => b.id === id);
     const stepsFor = cutoff => {
       const needs = {};
-      banks.forEach(b => { needs[b.id] = 0; });
+      const breakdown = {};
+      banks.forEach(b => { needs[b.id] = 0; breakdown[b.id] = []; });
       subitems.forEach(subitem => {
         const bankId = bankAssign[subitem.id];
         if (!isBank(bankId)) return;
-        needs[bankId] += CutoffPlan.amountIn(cutoffPlan, subitem, cutoff);
+        const amount = CutoffPlan.amountIn(cutoffPlan, subitem, cutoff);
+        if (!amount) return;
+        needs[bankId] += amount;
+        breakdown[bankId].push({ subitem, amount });
       });
-      return TransferPlanner.plan({ banks, fees, sourceId, needs });
+      return TransferPlanner.plan({ banks, fees, sourceId, needs }).map(step => ({
+        ...step,
+        carries: step.carries.map(c => ({ ...c, subitems: breakdown[c.bankId] })),
+      }));
     };
 
     return {

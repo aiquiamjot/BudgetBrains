@@ -21,7 +21,7 @@ test('transferPlanner', async (t) => {
     const banks = [bank('a'), bank('b')];
     const fees = { a_b: { fee: 10 } };
     const steps = TransferPlanner.plan({ banks, fees, sourceId: 'a', needs: { b: 100 } });
-    assert.deepEqual(plain(steps), [{ fromId: 'a', toId: 'b', amount: 100, fee: 10, routingFor: [] }]);
+    assert.deepEqual(plain(steps), [{ fromId: 'a', toId: 'b', amount: 100, fee: 10, carries: [{ bankId: 'b', amount: 100 }] }]);
   });
 
   await t.test('a strictly cheaper intermediary Bank is used instead of direct', () => {
@@ -29,8 +29,8 @@ test('transferPlanner', async (t) => {
     const fees = { a_b: { fee: 20 }, a_hub: { fee: 5 }, hub_b: { fee: 5 } };
     const steps = TransferPlanner.plan({ banks, fees, sourceId: 'a', needs: { b: 100 } });
     assert.deepEqual(plain(steps), [
-      { fromId: 'a', toId: 'hub', amount: 100, fee: 5, routingFor: ['b'] },
-      { fromId: 'hub', toId: 'b', amount: 100, fee: 5, routingFor: [] },
+      { fromId: 'a', toId: 'hub', amount: 100, fee: 5, carries: [{ bankId: 'b', amount: 100 }] },
+      { fromId: 'hub', toId: 'b', amount: 100, fee: 5, carries: [{ bankId: 'b', amount: 100 }] },
     ]);
   });
 
@@ -38,10 +38,10 @@ test('transferPlanner', async (t) => {
     const banks = [bank('a'), bank('b'), bank('hub')];
     const fees = { a_b: { fee: 10 }, a_hub: { fee: 5 }, hub_b: { fee: 5 } };
     const steps = TransferPlanner.plan({ banks, fees, sourceId: 'a', needs: { b: 100 } });
-    assert.deepEqual(plain(steps), [{ fromId: 'a', toId: 'b', amount: 100, fee: 10, routingFor: [] }]);
+    assert.deepEqual(plain(steps), [{ fromId: 'a', toId: 'b', amount: 100, fee: 10, carries: [{ bankId: 'b', amount: 100 }] }]);
   });
 
-  await t.test('two destinations through the same intermediary merge into one step with both in routingFor', () => {
+  await t.test('two destinations through the same intermediary merge into one step carrying both', () => {
     const banks = [bank('a'), bank('b'), bank('c'), bank('hub')];
     const fees = {
       a_b: { fee: 20 }, a_c: { fee: 20 },
@@ -49,7 +49,10 @@ test('transferPlanner', async (t) => {
     };
     const steps = TransferPlanner.plan({ banks, fees, sourceId: 'a', needs: { b: 100, c: 50 } });
     const hubLeg = steps.find(s => s.fromId === 'a' && s.toId === 'hub');
-    assert.deepEqual(plain(hubLeg), { fromId: 'a', toId: 'hub', amount: 150, fee: 5, routingFor: ['b', 'c'] });
+    assert.deepEqual(plain(hubLeg), {
+      fromId: 'a', toId: 'hub', amount: 150, fee: 5,
+      carries: [{ bankId: 'b', amount: 100 }, { bankId: 'c', amount: 50 }],
+    });
     assert.ok(steps.some(s => s.fromId === 'hub' && s.toId === 'b' && s.amount === 100));
     assert.ok(steps.some(s => s.fromId === 'hub' && s.toId === 'c' && s.amount === 50));
   });
@@ -73,7 +76,7 @@ test('transferPlanner', async (t) => {
     const banks = [bank('a'), bank('b')];
     const fees = {};
     const steps = TransferPlanner.plan({ banks, fees, sourceId: 'a', needs: { b: 100 } });
-    assert.deepEqual(plain(steps), [{ fromId: 'a', toId: 'b', amount: 100, fee: null, routingFor: [] }]);
+    assert.deepEqual(plain(steps), [{ fromId: 'a', toId: 'b', amount: 100, fee: null, carries: [{ bankId: 'b', amount: 100 }] }]);
   });
 
   await t.test('zero-need Banks are skipped', () => {

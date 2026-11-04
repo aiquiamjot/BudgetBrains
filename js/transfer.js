@@ -206,29 +206,28 @@ function calcSequence() {
   const { subitems } = S.overview;
   if (!banks.length) return;
 
-  const bankById = id => banks.find(b => b.id === id);
+  const bankName = id => banks.find(b => b.id === id)?.name || id;
   const sourceId = banks[0].id;
-  const PERIOD = { daily:'day', weekly:'week', monthly:'month' };
-  const freeNote = fromId => {
-    const b = bankById(fromId);
-    const fl = Number(b?.freeLimit) || 0;
-    return fl ? ` (${fl} free/${PERIOD[b.resetPeriod||'monthly']})` : '';
-  };
 
   function renderSteps(steps) {
-    return steps.map(st => {
-      const parts = [];
-      if (st.routingFor.length) parts.push(`Routing for ${st.routingFor.map(id => bankById(id)?.name || id).join(', ')}`);
-      const fn = freeNote(st.fromId);
-      if (fn) parts.push(fn.trim());
-      return {
-        from: bankById(st.fromId)?.name || st.fromId,
-        to: bankById(st.toId)?.name || st.toId,
-        amt: st.amount,
-        fee: st.fee,
-        note: parts.join(' '),
-      };
-    });
+    return steps.map(st => ({
+      from: bankName(st.fromId),
+      to: bankName(st.toId),
+      amt: st.amount,
+      fee: st.fee,
+      carries: st.carries,
+    }));
+  }
+
+  // The Transfer breakdown (CONTEXT.md): one plain list when the step carries
+  // money for a single Bank, otherwise a header per Bank where it comes to rest.
+  function breakdownHTML(carries) {
+    const list = subitems => `<ul class="step-breakdown-list">${subitems.map(line =>
+      `<li><span class="step-breakdown-name">${esc(line.subitem.name)}</span><span class="step-breakdown-amt">${fmt(line.amount)}</span></li>`).join('')}</ul>`;
+    if (carries.length === 1) return `<div class="step-breakdown">${list(carries[0].subitems)}</div>`;
+    return `<div class="step-breakdown">${carries.map(c => `
+      <div class="step-breakdown-bank">${esc(bankName(c.bankId))}</div>
+      ${list(c.subitems)}`).join('')}</div>`;
   }
 
   function stepsHTML(steps) {
@@ -239,13 +238,15 @@ function calcSequence() {
         ${steps.map((st, i) => `
           <div class="transfer-step">
             <div class="step-num">Step ${i+1}</div>
-            <div class="step-detail">
-              <span class="step-bank">${esc(st.from)}</span>
-              <i data-feather="arrow-right" style="width:14px;height:14px;opacity:.5"></i>
-              <span class="step-bank">${esc(st.to)}</span>
-              <span class="step-amount">${fmt(st.amt)}</span>
-              <span class="fee-badge ${st.fee===null?'warn':st.fee===0?'free':'paid'}">${st.fee===null?'⚠ No route':st.fee===0?'Free':'Fee: '+fmt(st.fee)}</span>
-              ${st.note?`<span class="step-note">${esc(st.note)}</span>`:''}
+            <div class="step-body">
+              <div class="step-detail">
+                <span class="step-bank">${esc(st.from)}</span>
+                <i data-feather="arrow-right" style="width:14px;height:14px;opacity:.5"></i>
+                <span class="step-bank">${esc(st.to)}</span>
+                <span class="step-amount">${fmt(st.amt)}</span>
+                <span class="fee-badge ${st.fee===null?'warn':st.fee===0?'free':'paid'}">${st.fee===null?'⚠ No route':st.fee===0?'Free':'Fee: '+fmt(st.fee)}</span>
+              </div>
+              ${breakdownHTML(st.carries)}
             </div>
           </div>`).join('')}
       </div>

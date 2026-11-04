@@ -561,7 +561,17 @@ select:focus { outline: none; border-color: var(--accent); }
 .step-detail { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; font-size: .88rem; }
 .step-bank { font-weight: 600; }
 .step-amount { font-weight: 600; color: var(--accent); margin-left: .25rem; }
-.step-note { color: var(--text-muted); font-size: .8rem; font-style: italic; }
+.step-body { flex: 1; min-width: 0; }
+.step-breakdown {
+  margin-top: .45rem; padding-left: .75rem; border-left: 2px solid var(--border);
+  font-size: .8rem; color: var(--text-muted);
+}
+.step-breakdown-bank { font-weight: 600; color: var(--text); margin-top: .35rem; }
+.step-breakdown-bank:first-child { margin-top: 0; }
+.step-breakdown-list { list-style: none; margin: 0; padding: 0; }
+.step-breakdown-list li { display: flex; justify-content: space-between; gap: .75rem; padding: .1rem 0; }
+.step-breakdown-name { min-width: 0; overflow-wrap: anywhere; }
+.step-breakdown-amt { flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .total-fees-bar {
   margin-top: .85rem; padding: .75rem 1rem; background: var(--surface2);
   border-radius: var(--radius-sm); border: 1px solid var(--border);

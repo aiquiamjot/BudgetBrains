@@ -71,6 +71,14 @@ A movement of money from one Bank to another needed to fund the Subitems assigne
 the destination. What each Cutoff's Transfers fund is decided in one place, the
 Transfer funding module (`js/transferFunding.js`).
 
+**Transfer breakdown**:
+The Subitems a Transfer carries money for, each with its amount in that Cutoff, so the
+lines add up exactly to the Transfer's amount. A Transfer into an intermediary Bank
+carries money both for that Bank's own Subitems and for those of the Banks it routes
+on to, grouped by the Bank where the money comes to rest. A ₱0 Subitem is never part of
+one; a Both Subitem appears with half its amount.
+_Avoid_: Allocation (reads as a Split)
+
 **Unfunded Subitem**:
 A Subitem with no Cutoff in the Cutoff Plan whose Bank assignment is a registered Bank
 other than the Salary source, so money is meant to reach that Bank but no Transfer

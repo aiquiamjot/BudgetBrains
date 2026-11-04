@@ -106,9 +106,11 @@ Active one.
 
 `js/transferPlanner.js` is not a tab either. It holds the Transfer planner — a pure,
 DOM-free namespace object (`TransferPlanner`) with one function, `plan({ banks, fees,
-sourceId, needs })`, returning Transfer steps as Bank ids, amounts, Fees and
-routing-for ids. It owns the Fee-key format used to look up a Route's Fee. It knows
-nothing about Subitems or Cutoffs.
+sourceId, needs })`, returning Transfer steps `{ fromId, toId, amount, fee, carries }`,
+where `carries: [{ bankId, amount }]` lists the Banks whose need the step's money is
+for, each with exactly the need routed through that step — the step's `to` Bank first,
+then `banks` order — adding up to `amount`. It owns the Fee-key format used to look up
+a Route's Fee. It knows nothing about Subitems or Cutoffs.
 
 `js/transferFunding.js` is not a tab either. It holds the Transfer funding module — a
 pure, DOM-free namespace object (`TransferFunding`) with one function, `fund({ banks,
@@ -116,13 +118,16 @@ fees, sourceId, subitems, cutoffPlan, bankAssign })`, returning `{ cutoff1, cuto
 unfunded }`. It is loaded after `js/cutoffPlan.js` and `js/transferPlanner.js` and
 calls both: each Cutoff's Bank need is the sum of the Cutoff Plan's `amountIn` over
 Subitems whose Bank assignment is a registered Bank (Cash, a deleted Bank or no Bank
-assignment contribute nothing), and `cutoff1` / `cutoff2` are exactly what
-`TransferPlanner.plan` returns for that Cutoff. `unfunded` lists the Unfunded Subitems
-(whole Subitem objects, in `subitems` order), and the Transfer tab renders its
-"No Transfer planned for …" warning from it. The
-Salary source is an input; the Transfer tab passes the first registered Bank (see
-[CONTEXT.md](CONTEXT.md)), makes one `fund` call, and turns the returned steps into
-Bank names, quota notes and "Routing for …" text at render time.
+assignment contribute nothing), and `cutoff1` / `cutoff2` are what
+`TransferPlanner.plan` returns for that Cutoff, with each `carries` entry enriched to
+`{ bankId, amount, subitems: [{ subitem, amount }] }` — the Transfer breakdown: the
+whole Subitem objects assigned to that Bank with a nonzero `amountIn` for the Cutoff,
+in `subitems` order, adding up to the entry's `amount`. `unfunded` lists the Unfunded
+Subitems (whole Subitem objects, in `subitems` order), and the Transfer tab renders its
+"No Transfer planned for …" warning from it. The Salary source is an input; the Transfer tab passes the first registered Bank (see
+[CONTEXT.md](CONTEXT.md)), makes one `fund` call, and renders each step with Bank names
+and its Transfer breakdown from `carries` — a plain list for one Bank, a header per Bank
+for several.
 
 ### Transfer Route Algorithm (`js/transferPlanner.js`)
 
@@ -130,8 +135,8 @@ The most complex module. `TransferPlanner.plan` builds an adjacency graph from t
 given Banks and Fees, then for each Bank with a nonzero need finds the cheapest path
 from the Salary source (direct, or via a single intermediary Bank, taken only when
 strictly cheaper). Steps sharing the same Bank pair are merged, summing amounts and
-combining `routingFor`. Results are sorted by Fee ascending, with no-Route steps
-(`fee: null`) last. A Bank with a free-transfer quota above 0 gives Fee 0 on its
+concatenating `carries` (each Bank's need takes one path, so no Bank repeats). Results
+are sorted by Fee ascending, with no-Route steps (`fee: null`) last. A Bank with a free-transfer quota above 0 gives Fee 0 on its
 outgoing Routes.
 
 ### Auth (`js/auth.js`)
