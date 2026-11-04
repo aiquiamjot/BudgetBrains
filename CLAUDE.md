@@ -49,7 +49,7 @@ The write path is fire-and-forget: `save(key)` immediately writes to localStorag
 
 `js/state.js` holds no Supabase reference. Load, bootstrap, activation and every write
 go through the **Profile store** — a pure, DOM-free namespace object (`ProfileStore`)
-whose `create({ state, remote, local })` returns `{ load, activate, save, saveProfile, create, rename, remove }`:
+whose `create({ state, remote, local })` returns `{ load, activate, save, saveProfile, create, rename, remove, profileIds, profileData }`:
 
 - `load()` reads device-local keys, fetches every row once, routes them into `state`,
   bootstraps "Main" when there is no Profile list, falls back from a stale Active
@@ -84,15 +84,13 @@ An Account holds several Profiles — alternative budgets, only one Active at a 
 where they do.
 
 `S` is **flat**: `S.overview` always means the *Active* Profile's overview, so every
-feature module reads state exactly as it did before Profiles existed. The other Profiles
-live in `S._profileData[profileId]`.
-
-Two rules keep that honest:
-
-1. `profileStore.activate(id)` points `S.overview` / `S.biweekly` / `S.bankAssign` / `S.manual` at
-   the **same object references** held in `S._profileData[id]`, so in-place mutations land
-   in both. Never reassign those four keys wholesale — mutate them.
-2. `save()` re-points the cache before writing, which covers rule 1 being broken.
+feature module reads state exactly as it did before Profiles existed. The four
+per-Profile keys (`overview`, `biweekly`, `bankAssign`, `manual`) are **accessor
+properties**: getting or setting one goes to the Active Profile's entry in the Profile
+store's private cache, so mutating in place and reassigning wholesale are both safe and
+both persisted by `save()`. The cache is not reachable from `S`; the only read access to
+other Profiles is `profileStore.profileIds()` and `profileStore.profileData(id)` —
+mutate what `profileData` returns, then persist with `profileStore.saveProfile(id, ...keys)`.
 
 `loadState()` fetches every Profile's rows in one query, so switching Profiles is purely
 in-memory — there is no refetch.

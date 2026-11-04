@@ -290,7 +290,9 @@ test('profileStore', async (t) => {
     await store.remove('p2');
 
     assert.deepEqual(state.profiles.map(p => p.id), ['p1']);
-    assert.equal(state._profileData.p2, undefined);
+    assert.deepEqual(store.profileIds(), ['p1']);
+    assert.equal(store.profileData('p2'), undefined);
+    assert.equal(state._profileData, undefined);
     assert.equal(remote.rows.some(r => r.profile_id === 'p2'), false);
     assert.equal(local.getItem('bb_groq_profile:p2'), null);
     assert.deepEqual(find(remote, 'account', 'bb_profiles').map(p => p.id), ['p1']);
@@ -309,5 +311,36 @@ test('profileStore', async (t) => {
     const { store } = await loaded(twoProfiles, { local: active.local() });
     await store.remove('p2');
     assert.throws(() => store.remove('p1'));
+  });
+
+  await t.test('a wholesale reassignment of an Active Profile key is read back and persisted', async () => {
+    const { store, state, remote } = await loaded(twoProfiles, { local: active.local() });
+    state.overview = overview(5000);
+    assert.equal(state.overview.netPay, 5000);
+    await store.save('overview');
+    assert.equal(find(remote, 'p1', 'bb_overview').netPay, 5000);
+    assert.equal(find(remote, 'p2', 'bb_overview').netPay, 2000);
+  });
+
+  await t.test('a reassigned value survives switching Profiles and back; the other Profile is unchanged', async () => {
+    const { store, state } = await loaded(twoProfiles, { local: active.local() });
+    state.bankAssign = { s9: 'b1' };
+    store.activate('p2');
+    assert.equal(state.overview.netPay, 2000);
+    store.activate('p1');
+    assert.deepEqual(plain(state.bankAssign), { s9: 'b1' });
+    assert.equal(store.profileData('p2').overview.netPay, 2000);
+  });
+
+  await t.test('profileIds lists every Profile and profileData returns its per-Profile data', async () => {
+    const { store } = await loaded(twoProfiles, { local: active.local() });
+    assert.deepEqual(store.profileIds(), ['p1', 'p2']);
+    assert.equal(store.profileData('p2').overview.netPay, 2000);
+    assert.deepEqual(plain(store.profileData('p1').bankAssign), { s1: 'b1' });
+  });
+
+  await t.test('the per-Profile cache is not reachable from the state object', async () => {
+    const { state } = await loaded(twoProfiles, { local: active.local() });
+    assert.equal(state._profileData, undefined);
   });
 });

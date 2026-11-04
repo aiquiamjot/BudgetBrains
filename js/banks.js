@@ -94,10 +94,9 @@ function deleteBank(id) {
   // Banks are account-level but bankAssign is per-profile, so this has to reach every
   // profile. Cascading over the active one alone leaves the others pointing at a bank
   // that no longer exists, and the Transfer tab will happily route to it.
-  // The active profile's bankAssign is the same object as its cache entry, so the loop
-  // covers it too and save('bankAssign') below persists it.
-  for (const pid in S._profileData) {
-    const assign = S._profileData[pid].bankAssign;
+  // The active profile is persisted by save('bankAssign') below; the rest go through saveProfile.
+  for (const pid of profileStore.profileIds()) {
+    const assign = profileStore.profileData(pid)?.bankAssign;
     if (!assign) continue;
     let touched = false;
     for (const k in assign) if (assign[k] === id) { delete assign[k]; touched = true; }

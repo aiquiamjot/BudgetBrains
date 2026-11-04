@@ -24,8 +24,9 @@ function clone(v) { return JSON.parse(JSON.stringify(v)); }
    LOCAL_PROFILE_KEYS → localStorage, one entry per profile
 
    S is flat: S.overview always means the ACTIVE profile's overview, so the feature
-   modules read state exactly as they did before profiles existed. Everything else
-   sits in S._profileData.
+   modules read state exactly as they did before profiles existed. The four per-profile
+   keys are accessor properties onto the Profile store's private cache, so reassigning
+   one wholesale is safe. Other profiles are reached only via profileIds() / profileData().
 ═══════════════════════════════════════════════════════════════════════════ */
 const ACCOUNT_SCOPE = 'account';
 
@@ -94,6 +95,19 @@ function profileLocalKey(k, profileId) { return LOCAL_PROFILE_KEYS[k] + ':' + pr
 
 const ProfileStore = {
   create({ state: S, remote, local }) {
+    // Every Profile's per-Profile data, keyed by Profile id. Private to the store.
+    let cache = {};
+
+    // S.overview etc. read and write the Active Profile's entry in the cache.
+    for (const k in PROFILE_KEYS) {
+      Object.defineProperty(S, k, {
+        enumerable: true,
+        configurable: true,
+        get() { return cache[S.activeProfile]?.[k]; },
+        set(v) { if (cache[S.activeProfile]) cache[S.activeProfile][k] = v; },
+      });
+    }
+
     function readLocal(storageKey, fallback) {
       try {
         const raw = local.getItem(storageKey);
@@ -132,12 +146,12 @@ const ProfileStore = {
         S[k] = row ? row.value : clone(DEFAULTS[k]);
       }
 
-      S._profileData = {};
+      cache = {};
       for (const r of rows) {
         if (r.profile_id === ACCOUNT_SCOPE) continue;
         const k = Object.keys(PROFILE_KEYS).find(name => PROFILE_KEYS[name] === r.key);
         if (!k) continue;
-        (S._profileData[r.profile_id] ??= {})[k] = r.value;
+        (cache[r.profile_id] ??= {})[k] = r.value;
       }
 
       // On a failed load, still put a profile in memory so the UI has something to render —
@@ -167,7 +181,7 @@ const ProfileStore = {
         const row = rows.find(r => r.profile_id === ACCOUNT_SCOPE && r.key === PROFILE_KEYS[k]);
         if (row) adopted[k] = row.value;
       }
-      S._profileData[id] = adopted;
+      cache[id] = adopted;
 
       activate(id);
       if (!persist) return;
@@ -183,22 +197,20 @@ const ProfileStore = {
     /* Makes `id` the Active Profile, in memory only — callers that want it remembered
        save('activeProfile') themselves.
 
-       Points the four per-profile keys at the SAME objects the cache holds, so the in-place
-       mutations the feature modules do (S.overview.netPay = x) land in both. Never reassign
-       S.overview / S.biweekly / S.bankAssign / S.manual wholesale — mutate them. */
+       The four per-profile keys are accessors onto the cache, so there is nothing to point:
+       both mutating and reassigning S.overview etc. land in the Active Profile's entry. */
     function activate(id) {
       S.activeProfile = id;
-      const d = (S._profileData[id] ??= {});
+      const d = (cache[id] ??= {});
       for (const k in PROFILE_KEYS) {
         if (d[k] === undefined) d[k] = clone(DEFAULTS[k]);
-        S[k] = d[k];
       }
 
       /* NOT redundant with DEFAULTS.biweekly, however much it looks it. A profile saved
          before Force Assign existed HAS a bb_biweekly row, so the default above is skipped
          entirely and the loaded plan arrives with no `forced` map at all. Runs here so it
          covers both the first load and every profile switch, and mutates in place because
-         the line above just pointed S.biweekly at the cached object. */
+         the cached object is what S.biweekly returns. */
       CutoffPlan.normalise(d.biweekly);
       for (const k in LOCAL_PROFILE_KEYS) S[k] = readLocal(profileLocalKey(k, id), DEFAULTS[k]);
     }
@@ -219,21 +231,17 @@ const ProfileStore = {
       const dbKeys = toSave.filter(k => k in DB_KEYS);
       if (!dbKeys.length) return Promise.resolve();
 
-      // Keep the cache in step with S, in case something reassigned rather than mutated
-      const cache = S._profileData?.[activeId];
-      if (cache) dbKeys.filter(k => k in PROFILE_KEYS).forEach(k => { cache[k] = S[k]; });
-
       return write(dbKeys.map(k => ({
         profile_id: k in ACCOUNT_KEYS ? ACCOUNT_SCOPE : activeId,
         key: DB_KEYS[k],
-        value: S[k],
+        value: k in PROFILE_KEYS ? cache[activeId]?.[k] : S[k],
       })), dbKeys.join(', '));
     }
 
     /* Writes per-profile keys for a profile that is NOT the active one, straight from the
        cache. Needed when an account-level change has to cascade into every profile. */
     function saveProfile(profileId, ...keys) {
-      const data = S._profileData?.[profileId];
+      const data = cache[profileId];
       if (!data) return Promise.resolve();
       return write(
         keys.filter(k => k in PROFILE_KEYS)
@@ -248,10 +256,10 @@ const ProfileStore = {
        new id; persistence is fire-and-forget like save. */
     function create(name, copyFromId) {
       const id  = genId();
-      const src = copyFromId ? S._profileData[copyFromId] : null;
+      const src = copyFromId ? cache[copyFromId] : null;
 
-      S._profileData[id] = {};
-      for (const k in PROFILE_KEYS) S._profileData[id][k] = clone(src?.[k] ?? DEFAULTS[k]);
+      cache[id] = {};
+      for (const k in PROFILE_KEYS) cache[id][k] = clone(src?.[k] ?? DEFAULTS[k]);
 
       S.profiles.push({ id, name });
       save('profiles');
@@ -275,7 +283,7 @@ const ProfileStore = {
       if (S.profiles.length <= 1) throw new Error('An account needs at least one profile');
 
       S.profiles = S.profiles.filter(x => x.id !== profileId);
-      delete S._profileData[profileId];
+      delete cache[profileId];
       const writes = [save('profiles')];
 
       writes.push(new Promise(resolve => resolve(remote.deleteScope(profileId)))
@@ -292,6 +300,11 @@ const ProfileStore = {
       return Promise.all(writes).then(() => {});
     }
 
-    return { load, activate, save, saveProfile, create, rename, remove };
+    /* The only read access to other Profiles' data (Bank deletion cascades through it).
+       Mutate what profileData returns, then persist with saveProfile. */
+    function profileIds() { return S.profiles.map(p => p.id); }
+    function profileData(profileId) { return cache[profileId]; }
+
+    return { load, activate, save, saveProfile, create, rename, remove, profileIds, profileData };
   },
 };
