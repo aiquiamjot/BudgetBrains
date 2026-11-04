@@ -43,7 +43,35 @@ All application state lives in a single `S` object. State keys fall into four bu
 
 `DB_KEYS` is the union of `ACCOUNT_KEYS` and `PROFILE_KEYS` and is what `save()` checks against.
 
-The write path is fire-and-forget: `save(key)` immediately writes to localStorage and issues a Supabase upsert with no awaited error handling.
+The write path is fire-and-forget: `save(key)` immediately writes to localStorage and issues a Supabase upsert that nothing awaits; a failed write is logged, never thrown.
+
+### Profile store (`js/state.js`) and wiring (`js/wiring.js`)
+
+`js/state.js` holds no Supabase reference. Load, bootstrap, activation and every write
+go through the **Profile store** — a pure, DOM-free namespace object (`ProfileStore`)
+whose `create({ state, remote, local })` returns `{ load, activate, save, saveProfile }`:
+
+- `load()` reads device-local keys, fetches every row once, routes them into `state`,
+  bootstraps "Main" when there is no Profile list, falls back from a stale Active
+  Profile, and resolves to `{ error }` (`null` on success).
+- `activate(profileId)` makes a Profile Active in memory only (callers
+  `save('activeProfile')` to remember it).
+- `save(...keys)` / `saveProfile(profileId, ...keys)` snapshot the Active Profile id
+  before anything asynchronous and return a promise that resolves when the write
+  completes. The app ignores it; tests await it.
+
+The store sits behind two adapters. The **remote adapter** is row-level —
+`loadRows()` → `{ rows: [{ profile_id, key, value }], error }`, `upsert(rows)` →
+`{ error }`, `deleteScope(profileId)`. The **local adapter** is anything shaped like
+`localStorage`. The store owns the `'account'` sentinel, the state-key → row-name
+mapping and which scope each key writes to; the Supabase adapter owns the signed-in
+user, the user id and the `user_id,profile_id,key` conflict target.
+
+`js/wiring.js`, loaded right after `js/state.js`, creates the Supabase client `sb`
+(the auth module uses it too), the Supabase adapter and the global `profileStore` over
+`S`, and defines the global `save` (one line into the store) and `loadState` (calls
+`load` and shows the load-failure alert, migration hint included, on an error).
+Tests build the store over an in-memory row list and a `Map`-backed stand-in.
 
 ### Profiles (`js/profiles.js`)
 
@@ -57,7 +85,7 @@ live in `S._profileData[profileId]`.
 
 Two rules keep that honest:
 
-1. `hydrateProfile(id)` points `S.overview` / `S.biweekly` / `S.bankAssign` / `S.manual` at
+1. `profileStore.activate(id)` points `S.overview` / `S.biweekly` / `S.bankAssign` / `S.manual` at
    the **same object references** held in `S._profileData[id]`, so in-place mutations land
    in both. Never reassign those four keys wholesale — mutate them.
 2. `save()` re-points the cache before writing, which covers rule 1 being broken.

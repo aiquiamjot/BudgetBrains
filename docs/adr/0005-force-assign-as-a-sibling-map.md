@@ -25,7 +25,7 @@ rather than storing `false`. The `assignments` map keeps its existing shape unto
   default, so existing saved plans need no migration whatsoever.
 - The absent map still has to be materialised before anything writes into it. A profile
   saved before this feature *has* a `bb_biweekly` row, so `DEFAULTS.biweekly` never applies
-  to it — the loaded value replaces the default wholesale. `hydrateProfile()` therefore
+  to it — the loaded value replaces the default wholesale. `profileStore.activate()` (formerly `hydrateProfile()`) therefore
   calls `normaliseBiweekly()`, which runs on first load and on every profile switch, and
   mutates the plan in place because the profile machinery relies on those objects being
   shared references. That call looks redundant next to the default and is not; it carries a

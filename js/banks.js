@@ -101,7 +101,7 @@ function deleteBank(id) {
     if (!assign) continue;
     let touched = false;
     for (const k in assign) if (assign[k] === id) { delete assign[k]; touched = true; }
-    if (touched && pid !== S.activeProfile) saveForProfile(pid, 'bankAssign');
+    if (touched && pid !== S.activeProfile) profileStore.saveProfile(pid, 'bankAssign');
   }
 
   save('banks','bankAssign','fees'); renderBanks();

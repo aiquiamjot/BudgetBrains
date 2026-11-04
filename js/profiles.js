@@ -43,9 +43,8 @@ function refreshAfterProfileChange() {
 
 function switchProfile(id) {
   if (id === S.activeProfile) return;
-  S.activeProfile = id;
+  profileStore.activate(id);
   save('activeProfile');
-  hydrateProfile(id);
   refreshAfterProfileChange();
 }
 
@@ -73,9 +72,8 @@ function createProfile(name, copyFromId) {
   S.profiles.push({ id, name });
   save('profiles');
 
-  S.activeProfile = id;
+  profileStore.activate(id);
   save('activeProfile');
-  hydrateProfile(id);
   save(...Object.keys(PROFILE_KEYS));
 
   refreshAfterProfileChange();
@@ -112,8 +110,7 @@ function deleteActiveProfile() {
   deleteProfileRows(gone);
   clearProfileLocal(gone);
 
-  S.activeProfile = S.profiles[0].id;
+  profileStore.activate(S.profiles[0].id);
   save('activeProfile');
-  hydrateProfile(S.activeProfile);
   refreshAfterProfileChange();
 }

@@ -12,9 +12,12 @@ const vm = require('node:vm');
    A `const`/`let` declared at a script's top level is not copied onto the
    context object vm.createContext wraps (only `var` and explicit global
    assignment are); it lives in the context's global lexical environment
-   instead. Evaluating the bare name back in that same context reaches it. */
-function loadScripts(relativePaths, globalNames) {
-  const context = {};
+   instead. Evaluating the bare name back in that same context reaches it.
+
+   The context starts empty — no `console`, no `crypto`. `platformGlobals` seeds
+   the browser built-ins a script calls into (never the app's own modules). */
+function loadScripts(relativePaths, globalNames, platformGlobals = {}) {
+  const context = { ...platformGlobals };
   vm.createContext(context);
   for (const relativePath of relativePaths) {
     const file = path.join(__dirname, '..', relativePath);

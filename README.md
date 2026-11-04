@@ -147,7 +147,7 @@ python -m http.server 8080
 
 On Windows, `launch.bat` opens Chrome directly to `index.html`.
 
-If you fork this, point it at your own backend: replace `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the top of `js/state.js` with your own Supabase project's values, and create the `user_data` table it expects. The schema is documented in [CLAUDE.md](CLAUDE.md); the domain vocabulary is in [CONTEXT.md](CONTEXT.md), and `docs/adr/` records why the main boundaries fall where they do.
+If you fork this, point it at your own backend: replace `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the top of `js/wiring.js` with your own Supabase project's values, and create the `user_data` table it expects. The schema is documented in [CLAUDE.md](CLAUDE.md); the domain vocabulary is in [CONTEXT.md](CONTEXT.md), and `docs/adr/` records why the main boundaries fall where they do.
 
 Deploy target is Vercel — static hosting, no build config needed.
 
