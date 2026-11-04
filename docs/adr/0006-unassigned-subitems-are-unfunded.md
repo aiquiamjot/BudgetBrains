@@ -1,7 +1,8 @@
 # Unassigned Subitems are unfunded
 
 An unassigned Subitem — one with no Cutoff in its Cutoff Plan `assignments` map —
-contributes nothing to either Cutoff's Transfer needs. The Transfer tab computes each
+contributes nothing to either Cutoff's Transfer needs. The Transfer funding module
+(`js/transferFunding.js`, originally the Transfer tab) computes each
 Bank's needs per Cutoff purely through `CutoffPlan.amountIn`, which returns `0` for an
 unassigned Subitem. `'both'` still contributes half its amount to each Cutoff.
 

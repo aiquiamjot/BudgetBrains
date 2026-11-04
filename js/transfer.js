@@ -215,22 +215,7 @@ function calcSequence() {
     return fl ? ` (${fl} free/${PERIOD[b.resetPeriod||'monthly']})` : '';
   };
 
-  // Build bank needs for one cutoff ('cutoff1' or 'cutoff2') through the
-  // Cutoff Plan's amountIn, so an unassigned Subitem contributes nothing to
-  // either cutoff — agreeing with the Biweekly tab. See docs/adr/0006-*.
-  function buildNeeds(cutoff) {
-    const needs = {};
-    banks.forEach(b => { needs[b.id] = 0; });
-    subitems.forEach(it => {
-      const bid = S.bankAssign[it.id];
-      if (!bid || needs[bid] === undefined) return;
-      needs[bid] += CutoffPlan.amountIn(biweekly, it, cutoff);
-    });
-    return needs;
-  }
-
-  function renderSteps(needs) {
-    const steps = TransferPlanner.plan({ banks, fees, sourceId, needs });
+  function renderSteps(steps) {
     return steps.map(st => {
       const parts = [];
       if (st.routingFor.length) parts.push(`Routing for ${st.routingFor.map(id => bankById(id)?.name || id).join(', ')}`);
@@ -267,17 +252,17 @@ function calcSequence() {
       <div class="total-fees-bar">Transfer Fees: <strong>${fmt(totalFee)}</strong></div>`;
   }
 
-  const unfundedItems = CutoffPlan.unassigned(biweekly, subitems).filter(it => {
-    const bid = S.bankAssign[it.id];
-    return bid && bid !== 'cash' && bid !== sourceId && bankById(bid);
+  const funding = TransferFunding.fund({
+    banks, fees, sourceId, subitems, cutoffPlan: biweekly, bankAssign: S.bankAssign,
   });
-  const warnEl = ri('unassigned-warning');
-  warnEl.innerHTML = unfundedItems.length
-    ? `<p class="warn-note">⚠ No Transfer planned for: ${unfundedItems.map(it => esc(it.name)).join(', ')} — assign a Cutoff in the Biweekly tab to fund ${unfundedItems.length===1?'it':'them'}.</p>`
-    : '';
 
-  const steps1 = renderSteps(buildNeeds('cutoff1'));
-  const steps2 = renderSteps(buildNeeds('cutoff2'));
+  const { unfunded } = funding;
+  const warnEl = ri('unassigned-warning');
+  warnEl.innerHTML = unfunded.length
+    ? `<p class="warn-note">⚠ No Transfer planned for: ${unfunded.map(it => esc(it.name)).join(', ')} — assign a Cutoff in the Biweekly tab to fund ${unfunded.length===1?'it':'them'}.</p>`
+    : '';
+  const steps1 = renderSteps(funding.cutoff1);
+  const steps2 = renderSteps(funding.cutoff2);
   const res = ri('calc-result');
 
   if (!steps1.length && !steps2.length) {
