@@ -22,7 +22,7 @@ const TransferFunding = {
       banks.forEach(b => { needs[b.id] = 0; });
       subitems.forEach(subitem => {
         const bankId = bankAssign[subitem.id];
-        if (!bankId || needs[bankId] === undefined) return;
+        if (!isBank(bankId)) return;
         needs[bankId] += CutoffPlan.amountIn(cutoffPlan, subitem, cutoff);
       });
       return TransferPlanner.plan({ banks, fees, sourceId, needs });

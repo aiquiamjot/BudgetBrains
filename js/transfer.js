@@ -256,7 +256,7 @@ function calcSequence() {
     banks, fees, sourceId, subitems, cutoffPlan: biweekly, bankAssign: S.bankAssign,
   });
 
-  const unfunded = funding.unfunded;
+  const { unfunded } = funding;
   const warnEl = ri('unassigned-warning');
   warnEl.innerHTML = unfunded.length
     ? `<p class="warn-note">⚠ No Transfer planned for: ${unfunded.map(it => esc(it.name)).join(', ')} — assign a Cutoff in the Biweekly tab to fund ${unfunded.length===1?'it':'them'}.</p>`

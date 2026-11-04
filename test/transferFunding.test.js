@@ -98,6 +98,7 @@ test('transferFunding', async (t) => {
       { sourceId: 'b', fees: { b_src: { fee: 3 } } });
     assert.deepEqual(result.cutoff1, [{ fromId: 'b', toId: 'src', amount: 100, fee: 3, routingFor: [] }]);
   });
+
   await t.test('an unassigned Subitem in a non-source registered Bank is unfunded', () => {
     const x = subitem('x', 100);
     const result = fund([x], {}, { x: 'b' });
