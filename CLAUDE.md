@@ -117,8 +117,9 @@ unfunded }`. It is loaded after `js/cutoffPlan.js` and `js/transferPlanner.js` a
 calls both: each Cutoff's Bank need is the sum of the Cutoff Plan's `amountIn` over
 Subitems whose Bank assignment is a registered Bank (Cash, a deleted Bank or no Bank
 assignment contribute nothing), and `cutoff1` / `cutoff2` are exactly what
-`TransferPlanner.plan` returns for that Cutoff. `unfunded` is currently always empty —
-the Transfer tab still derives its "No Transfer planned for …" warning inline. The
+`TransferPlanner.plan` returns for that Cutoff. `unfunded` lists the Unfunded Subitems
+(whole Subitem objects, in `subitems` order), and the Transfer tab renders its
+"No Transfer planned for …" warning from it. The
 Salary source is an input; the Transfer tab passes the first registered Bank (see
 [CONTEXT.md](CONTEXT.md)), makes one `fund` call, and turns the returned steps into
 Bank names, quota notes and "Routing for …" text at render time.

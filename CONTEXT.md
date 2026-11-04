@@ -71,6 +71,13 @@ A movement of money from one Bank to another needed to fund the Subitems assigne
 the destination. What each Cutoff's Transfers fund is decided in one place, the
 Transfer funding module (`js/transferFunding.js`).
 
+**Unfunded Subitem**:
+A Subitem with no Cutoff in the Cutoff Plan whose Bank assignment is a registered Bank
+other than the Salary source, so money is meant to reach that Bank but no Transfer
+will carry it. Its amount does not matter — a ₱0 Subitem can be one. Cash, the Salary
+source, a deleted Bank or no Bank assignment never make a Subitem unfunded. The
+Transfer funding module returns them; the Transfer tab warns about them.
+
 **Salary source**:
 The Bank a Profile's Net Pay lands in, currently the first registered Bank. The
 Transfer planner (`js/transferPlanner.js`) never routes a Transfer to it, only from

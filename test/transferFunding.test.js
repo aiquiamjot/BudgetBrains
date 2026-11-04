@@ -98,4 +98,39 @@ test('transferFunding', async (t) => {
       { sourceId: 'b', fees: { b_src: { fee: 3 } } });
     assert.deepEqual(result.cutoff1, [{ fromId: 'b', toId: 'src', amount: 100, fee: 3, routingFor: [] }]);
   });
+  await t.test('an unassigned Subitem in a non-source registered Bank is unfunded', () => {
+    const x = subitem('x', 100);
+    const result = fund([x], {}, { x: 'b' });
+    assert.deepEqual(result.unfunded, [x]);
+  });
+
+  await t.test('an unassigned Subitem with Cash, the Salary source, a deleted Bank or no Bank assignment is not unfunded', () => {
+    const result = fund(
+      [subitem('c', 100), subitem('s', 100), subitem('g', 100), subitem('n', 100)],
+      {},
+      { c: 'cash', s: 'src', g: 'gone' },
+    );
+    assert.deepEqual(result.unfunded, []);
+  });
+
+  await t.test('an assigned Subitem is not unfunded', () => {
+    const result = fund(
+      [subitem('x', 100), subitem('y', 100), subitem('z', 100)],
+      { x: 'cutoff1', y: 'cutoff2', z: 'both' },
+      { x: 'b', y: 'b', z: 'b' },
+    );
+    assert.deepEqual(result.unfunded, []);
+  });
+
+  await t.test('a ₱0 unassigned Subitem is still unfunded', () => {
+    const x = subitem('x', 0);
+    const result = fund([x], {}, { x: 'b' });
+    assert.deepEqual(result.unfunded, [x]);
+  });
+
+  await t.test('unfunded keeps Subitem order', () => {
+    const z = subitem('z', 10), a = subitem('a', 20), m = subitem('m', 30);
+    const result = fund([z, subitem('k', 5), a, m], { k: 'cutoff1' }, { z: 'b', k: 'b', a: 'b', m: 'b' });
+    assert.deepEqual(result.unfunded, [z, a, m]);
+  });
 });

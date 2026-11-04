@@ -252,18 +252,15 @@ function calcSequence() {
       <div class="total-fees-bar">Transfer Fees: <strong>${fmt(totalFee)}</strong></div>`;
   }
 
-  const unfundedItems = CutoffPlan.unassigned(biweekly, subitems).filter(it => {
-    const bid = S.bankAssign[it.id];
-    return bid && bid !== 'cash' && bid !== sourceId && bankById(bid);
-  });
-  const warnEl = ri('unassigned-warning');
-  warnEl.innerHTML = unfundedItems.length
-    ? `<p class="warn-note">⚠ No Transfer planned for: ${unfundedItems.map(it => esc(it.name)).join(', ')} — assign a Cutoff in the Biweekly tab to fund ${unfundedItems.length===1?'it':'them'}.</p>`
-    : '';
-
   const funding = TransferFunding.fund({
     banks, fees, sourceId, subitems, cutoffPlan: biweekly, bankAssign: S.bankAssign,
   });
+
+  const unfunded = funding.unfunded;
+  const warnEl = ri('unassigned-warning');
+  warnEl.innerHTML = unfunded.length
+    ? `<p class="warn-note">⚠ No Transfer planned for: ${unfunded.map(it => esc(it.name)).join(', ')} — assign a Cutoff in the Biweekly tab to fund ${unfunded.length===1?'it':'them'}.</p>`
+    : '';
   const steps1 = renderSteps(funding.cutoff1);
   const steps2 = renderSteps(funding.cutoff2);
   const res = ri('calc-result');
